@@ -172,6 +172,9 @@ function toMapEntityList(value: unknown, fallbackType: string): MapEntitySnapsho
       y,
       type: pickFirstString(item, ["type"]) ?? fallbackType,
       id: pickFirstString(item, ["id"]),
+      value: pickFirstNumber(item, ["value"]),
+      damage: pickFirstNumber(item, ["damage"]),
+      tileIndex: pickFirstNumber(item, ["tileIndex"]),
     });
   }
 
@@ -192,9 +195,11 @@ function toEnemyList(value: unknown): EnemySnapshot[] {
       y,
       type: pickFirstString(item, ["type", "spriteType"]) ?? "enemy",
       id: pickFirstString(item, ["id"]),
+      value: null,
+      damage: pickFirstNumber(item, ["damage"]),
+      tileIndex: null,
       hp: pickFirstNumber(item, ["hp"]),
       maxHp: pickFirstNumber(item, ["maxHp"]),
-      damage: pickFirstNumber(item, ["damage"]),
       spriteType: pickFirstString(item, ["spriteType"]),
       moveCooldown: pickFirstNumber(item, ["moveCooldown"]),
       hasHeavyHit: item.hasHeavyHit === true,
@@ -224,6 +229,9 @@ function toTorchList(value: unknown): TorchSnapshot[] {
       y,
       type: "torch",
       id: pickFirstString(item, ["id"]),
+      value: null,
+      damage: null,
+      tileIndex: null,
       isRevealed: typeof item.isRevealed === "boolean" ? item.isRevealed : null,
     });
   }
@@ -252,6 +260,7 @@ function toGameState(payload: unknown): GameStateSnapshot | null {
     createdAt: pickFirstString(source, ["createdAt"]),
     lastActionAt: pickFirstString(source, ["lastActionAt"]),
     currentRerollCount: pickFirstNumber(source, ["currentRerollCount"]),
+    nextRerollCost: pickFirstNumber(source, ["nextRerollCost", "rerollCost", "nextUpgradeRerollCost"]),
     teleportUseCount: pickFirstNumber(source, ["teleportUseCount"]),
     skDefeated: pickBooleanOrNull(source, "skDefeated"),
     pendingUpgradeCount:
@@ -467,6 +476,7 @@ export async function rerollRun(runId: string): Promise<RunRerollResult> {
       success: false,
       upgradeOptions: [],
       treasureCost: null,
+      nextRerollCost: null,
       newTreasure: null,
       currentRerollCount: null,
     };
@@ -476,6 +486,7 @@ export async function rerollRun(runId: string): Promise<RunRerollResult> {
     success: source.success === true,
     upgradeOptions: toStringArray(source.upgradeOptions),
     treasureCost: pickFirstNumber(source, ["treasureCost"]),
+    nextRerollCost: pickFirstNumber(source, ["nextRerollCost", "rerollCost", "nextUpgradeRerollCost"]),
     newTreasure: pickFirstNumber(source, ["newTreasure"]),
     currentRerollCount: pickFirstNumber(source, ["currentRerollCount"]),
   };

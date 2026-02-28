@@ -1,4 +1,5 @@
 import { apiRequest } from "../../lib/http/api-client";
+import { ApiError } from "../../lib/http/api-error";
 import type { AuthSession, AuthUser, PublicProfile, SiwePayload } from "./auth.types";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -63,10 +64,18 @@ function toBoolean(value: unknown): boolean {
 }
 
 export async function fetchPublicProfile(address: string): Promise<PublicProfile | null> {
-  const payload = await apiRequest<unknown>(`profile/${address}`, {
-    method: "GET",
-    credentials: "omit",
-  });
+  let payload: unknown;
+  try {
+    payload = await apiRequest<unknown>(`profile/${address}`, {
+      method: "GET",
+      credentials: "omit",
+    });
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 410)) {
+      return null;
+    }
+    throw error;
+  }
 
   return toPublicProfile(payload);
 }

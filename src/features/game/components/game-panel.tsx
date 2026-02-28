@@ -1,5 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatEther, parseEther } from "viem";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 
+import { appConfig } from "../../../app/config";
 import { ApiError } from "../../../lib/http/api-error";
 import { gameActionQueue } from "../../realtime/game-action-queue";
 import {
@@ -7,10 +10,12 @@ import {
   findBreakableInteractiveAtPosition,
   findEnemyAtPosition,
   getMoveTarget,
+  isAttackableEnemy,
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
 import type { GameStateSnapshot, MoveDirection } from "../game.types";
+import { MapBoard } from "./map-board";
 import { useActiveRunQuery } from "../use-active-run-query";
 import { useCreateRunMutation } from "../use-create-run-mutation";
 import { useGameStatusQuery } from "../use-game-status-query";
@@ -119,7 +124,53 @@ function countFogMask(fogMask: number[][] | null) {
   return counts;
 }
 
+function shouldIgnoreGameplayHotkey(event: KeyboardEvent): boolean {
+  if (event.metaKey || event.ctrlKey || event.altKey) return true;
+
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return false;
+
+  return Boolean(target.closest("input, textarea, select, button, [contenteditable]"));
+}
+
+const FIRST_REROLL_COST = 10;
+const SECOND_REROLL_COST = 20;
+const KEY_PRICE_ETH = "0.001";
+const KEY_PRICE_WEI = parseEther(KEY_PRICE_ETH);
+const KEYS_CONTRACT_ADDRESS = "0xBDE2483b242C266a97E39826b2B5B3c06FC02916" as const;
+const KEYS_CONTRACT_ABI = [
+  {
+    type: "function",
+    stateMutability: "payable",
+    name: "buyKeys",
+    inputs: [{ name: "quantity", type: "uint256" }],
+    outputs: [],
+  },
+] as const;
+
+function estimateNextRerollCost(currentRerollCount: number | null | undefined): number | null {
+  if (typeof currentRerollCount !== "number" || !Number.isSafeInteger(currentRerollCount)) return null;
+  if (currentRerollCount < 0) return null;
+
+  const nextRerollNumber = currentRerollCount + 1;
+  if (nextRerollNumber === 1) return FIRST_REROLL_COST;
+  if (nextRerollNumber === 2) return SECOND_REROLL_COST;
+
+  let previousCost = FIRST_REROLL_COST;
+  let currentCost = SECOND_REROLL_COST;
+
+  for (let rerollNumber = 3; rerollNumber <= nextRerollNumber; rerollNumber += 1) {
+    const nextCost = previousCost + currentCost;
+    if (!Number.isSafeInteger(nextCost)) return null;
+    previousCost = currentCost;
+    currentCost = nextCost;
+  }
+
+  return currentCost;
+}
+
 export function GamePanel() {
+  const agwAccount = useAccount();
   const statusQuery = useGameStatusQuery();
   const activeRunQuery = useActiveRunQuery();
   const balanceQuery = useKeysBalanceQuery();
@@ -127,28 +178,64 @@ export function GamePanel() {
   const runMoveMutation = useRunMoveMutation();
   const runRerollMutation = useRunRerollMutation();
   const selectUpgradeMutation = useSelectUpgradeMutation();
+  const buyKeysMutation = useWriteContract();
+  const buyKeysReceiptQuery = useWaitForTransactionReceipt({
+    hash: buyKeysMutation.data,
+    query: {
+      enabled: Boolean(buyKeysMutation.data),
+    },
+  });
   const activeRun = activeRunQuery.data?.activeRun ?? null;
   const activeRunId = activeRunQuery.data?.activeRunId ?? null;
   const runStateQuery = useRunStateQuery(activeRunId);
   const [keysAmountInput, setKeysAmountInput] = useState("1");
+  const [buyKeysQuantityInput, setBuyKeysQuantityInput] = useState("1");
   const [localGameState, setLocalGameState] = useState<GameStateSnapshot | null>(null);
   const [lastMoveEvents, setLastMoveEvents] = useState<Record<string, unknown>[]>([]);
   const localGameStateRef = useRef<GameStateSnapshot | null>(null);
+  const lastBuyKeysRefreshedTxHashRef = useRef<string | null>(null);
 
-  function replaceLocalGameState(nextState: GameStateSnapshot | null) {
+  const replaceLocalGameState = useCallback((nextState: GameStateSnapshot | null) => {
     localGameStateRef.current = nextState;
     setLocalGameState(nextState);
-  }
+  }, []);
 
   const hasActiveRun = Boolean(activeRunId);
   const balance = balanceQuery.data?.balance;
   const parsedKeysAmount = parseIntegerInput(keysAmountInput);
+  const parsedBuyKeysQuantity = parseIntegerInput(buyKeysQuantityInput);
   const startRunValidationError = validateStartRunInput({
     parsedKeysAmount,
     balance,
     hasActiveRun,
   });
+  const isOnSupportedChain = agwAccount.chainId === appConfig.auth.chainId;
+  const buyKeysValidationError = !agwAccount.isConnected
+    ? "Wallet not connected."
+    : !isOnSupportedChain
+      ? `Wrong chain (expected ${appConfig.auth.chainId}, got ${agwAccount.chainId ?? "-"})`
+      : parsedBuyKeysQuantity === null
+        ? "Quantity must be an integer."
+        : parsedBuyKeysQuantity < 1
+          ? "Quantity must be >= 1."
+          : null;
+  const buyKeysValueWei =
+    parsedBuyKeysQuantity !== null && parsedBuyKeysQuantity >= 1 ? KEY_PRICE_WEI * BigInt(parsedBuyKeysQuantity) : null;
+  const buyKeysValueEth = buyKeysValueWei === null ? "-" : formatEther(buyKeysValueWei);
+  const hasBuyKeysTxHash = Boolean(buyKeysMutation.data);
+  const isBuyKeysReceiptFetching = hasBuyKeysTxHash && buyKeysReceiptQuery.isFetching;
+  const isBuyKeysPending = buyKeysMutation.isPending || isBuyKeysReceiptFetching;
+  const canBuyKeys = !buyKeysValidationError && !isBuyKeysPending;
   const canStartRun = !startRunValidationError && !createRunMutation.isPending;
+
+  useEffect(() => {
+    const txHash = buyKeysMutation.data;
+    if (!txHash || !buyKeysReceiptQuery.isSuccess) return;
+    if (lastBuyKeysRefreshedTxHashRef.current === txHash) return;
+
+    lastBuyKeysRefreshedTxHashRef.current = txHash;
+    void balanceQuery.refetch();
+  }, [balanceQuery, buyKeysMutation.data, buyKeysReceiptQuery.isSuccess]);
 
   async function refreshAll() {
     const tasks: Array<Promise<unknown>> = [
@@ -171,6 +258,19 @@ export function GamePanel() {
     });
     replaceLocalGameState(result.gameState);
     setLastMoveEvents([]);
+  }
+
+  async function handleBuyKeys() {
+    if (!canBuyKeys || parsedBuyKeysQuantity === null || parsedBuyKeysQuantity < 1 || buyKeysValueWei === null) return;
+
+    await buyKeysMutation.writeContractAsync({
+      address: KEYS_CONTRACT_ADDRESS,
+      abi: KEYS_CONTRACT_ABI,
+      functionName: "buyKeys",
+      args: [BigInt(parsedBuyKeysQuantity)],
+      value: buyKeysValueWei,
+      chainId: appConfig.auth.chainId,
+    });
   }
 
   async function handleResumeActiveRun() {
@@ -210,6 +310,28 @@ export function GamePanel() {
   const moveRunId = effectiveGameState?.runId ?? activeRunId;
   const pendingUpgradeOptions = effectiveGameState?.pendingUpgradeOptions ?? [];
   const hasPendingUpgradeSelection = pendingUpgradeOptions.length > 0;
+  const isAnyActionPending = runMoveMutation.isPending || runRerollMutation.isPending || selectUpgradeMutation.isPending;
+  const playerTreasure = player?.treasure ?? null;
+  const nextRerollCost =
+    typeof effectiveGameState?.nextRerollCost === "number" && effectiveGameState.nextRerollCost >= 0
+      ? effectiveGameState.nextRerollCost
+      : estimateNextRerollCost(effectiveGameState?.currentRerollCount);
+  const canEstimateNextRerollCost = typeof nextRerollCost === "number";
+  const hasEnoughTreasureForReroll =
+    canEstimateNextRerollCost && typeof playerTreasure === "number" && playerTreasure >= nextRerollCost;
+
+  const rerollValidationError = !moveRunId
+    ? "No active run id."
+    : !hasPendingUpgradeSelection
+      ? "No pending upgrade selection."
+      : !canEstimateNextRerollCost
+        ? "Unable to estimate next reroll cost."
+      : !hasEnoughTreasureForReroll
+        ? `Insufficient treasure for reroll (need ${nextRerollCost}, have ${playerTreasure ?? 0}).`
+        : null;
+
+  const isRerollDisabled =
+    Boolean(rerollValidationError) || runRerollMutation.isPending || selectUpgradeMutation.isPending;
   const enemyLines = useMemo(() => {
     if (!effectiveGameState || !player) return [];
 
@@ -217,12 +339,13 @@ export function GamePanel() {
       const distance = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
       const hp =
         enemy.hp !== null && enemy.maxHp !== null ? `${enemy.hp}/${enemy.maxHp}` : enemy.hp ?? enemy.maxHp ?? "-";
+      const attackable = isAttackableEnemy(enemy) ? "yes" : "no";
 
       return `${index + 1}. ${enemy.id ?? "enemy"} @(${enemy.x},${enemy.y}) dist=${distance} hp=${hp} dmg=${
         enemy.damage ?? "-"
       } type=${enemy.type} sprite=${enemy.spriteType ?? "-"} cooldown=${enemy.moveCooldown ?? "-"} heavy=${
         enemy.hasHeavyHit ? "yes" : "no"
-      } charging=${enemy.isChargingHeavy ? "yes" : "no"}`;
+      } charging=${enemy.isChargingHeavy ? "yes" : "no"} attackable=${attackable}`;
     });
   }, [effectiveGameState, player]);
   const interactiveLines = useMemo(() => {
@@ -273,6 +396,10 @@ export function GamePanel() {
 
     const enemyOnTarget = findEnemyAtPosition(effectiveGameState, target.targetX, target.targetY);
     if (enemyOnTarget) {
+      if (!isAttackableEnemy(enemyOnTarget)) {
+        return `Ghost at (${target.targetX}, ${target.targetY}) cannot be attacked.`;
+      }
+
       if (!enemyOnTarget.id) {
         return `Enemy at (${target.targetX}, ${target.targetY}) has no id.`;
       }
@@ -316,6 +443,9 @@ export function GamePanel() {
 
     const enemyOnTarget = findEnemyAtPosition(effectiveGameState, target.targetX, target.targetY);
     if (enemyOnTarget) {
+      if (!isAttackableEnemy(enemyOnTarget)) {
+        return `Ghost at (${target.targetX},${target.targetY})`;
+      }
       return enemyOnTarget.id ? `Attack ${enemyOnTarget.id}` : "Attack";
     }
 
@@ -331,45 +461,56 @@ export function GamePanel() {
     return `Move to (${target.targetX},${target.targetY})`;
   }
 
-  async function handleMove(direction: MoveDirection) {
-    if (localGameStateRef.current?.runId !== effectiveGameState?.runId) {
-      localGameStateRef.current = effectiveGameState;
-    }
-
-    await gameActionQueue.enqueue(async () => {
-      const queuedState = localGameStateRef.current;
-      const queuedRunId = queuedState?.runId ?? activeRunId;
-      if (!queuedState || !queuedRunId) return;
-
-      const target = getMoveTarget(queuedState, direction);
-      if (!target) return;
-
-      const enemyOnTarget = findEnemyAtPosition(queuedState, target.targetX, target.targetY);
-      const breakableInteractive = findBreakableInteractiveAtPosition(queuedState, target.targetX, target.targetY);
-      if (enemyOnTarget && !enemyOnTarget.id) return;
-      if (breakableInteractive && !breakableInteractive.id) return;
-      if (!enemyOnTarget && !breakableInteractive && !isMoveTargetPassable(queuedState, target.targetX, target.targetY)) {
-        return;
+  const handleMove = useCallback(
+    async (direction: MoveDirection) => {
+      if (localGameStateRef.current?.runId !== effectiveGameState?.runId) {
+        localGameStateRef.current = effectiveGameState;
       }
 
-      const result = await runMoveMutation.mutateAsync({
-        runId: queuedRunId,
-        direction,
-        actionType: enemyOnTarget ? "attack" : breakableInteractive ? "break" : "move",
-        targetEnemyId: enemyOnTarget?.id ?? undefined,
-        targetId: enemyOnTarget ? undefined : breakableInteractive?.id ?? undefined,
-        targetX: enemyOnTarget || breakableInteractive ? undefined : target.targetX,
-        targetY: enemyOnTarget || breakableInteractive ? undefined : target.targetY,
+      await gameActionQueue.enqueue(async () => {
+        const queuedState = localGameStateRef.current;
+        const queuedRunId = queuedState?.runId ?? activeRunId;
+        if (!queuedState || !queuedRunId) return;
+        if ((queuedState.pendingUpgradeOptions?.length ?? 0) > 0) return;
+
+        const target = getMoveTarget(queuedState, direction);
+        if (!target) return;
+
+        const enemyOnTarget = findEnemyAtPosition(queuedState, target.targetX, target.targetY);
+        if (enemyOnTarget && !isAttackableEnemy(enemyOnTarget)) return;
+
+        const attackableEnemy = enemyOnTarget && isAttackableEnemy(enemyOnTarget) ? enemyOnTarget : null;
+        const breakableInteractive = findBreakableInteractiveAtPosition(queuedState, target.targetX, target.targetY);
+        if (attackableEnemy && !attackableEnemy.id) return;
+        if (breakableInteractive && !breakableInteractive.id) return;
+        if (
+          !attackableEnemy &&
+          !breakableInteractive &&
+          !isMoveTargetPassable(queuedState, target.targetX, target.targetY)
+        ) {
+          return;
+        }
+
+        const result = await runMoveMutation.mutateAsync({
+          runId: queuedRunId,
+          direction,
+          actionType: attackableEnemy ? "attack" : breakableInteractive ? "break" : "move",
+          targetEnemyId: attackableEnemy?.id ?? undefined,
+          targetId: attackableEnemy ? undefined : breakableInteractive?.id ?? undefined,
+          targetX: attackableEnemy || breakableInteractive ? undefined : target.targetX,
+          targetY: attackableEnemy || breakableInteractive ? undefined : target.targetY,
+        });
+
+        if (result.gameState) {
+          replaceLocalGameState(result.gameState);
+        }
+        setLastMoveEvents(result.events);
       });
+    },
+    [activeRunId, effectiveGameState, replaceLocalGameState, runMoveMutation],
+  );
 
-      if (result.gameState) {
-        replaceLocalGameState(result.gameState);
-      }
-      setLastMoveEvents(result.events);
-    });
-  }
-
-  async function handlePass() {
+  const handlePass = useCallback(async () => {
     if (localGameStateRef.current?.runId !== effectiveGameState?.runId) {
       localGameStateRef.current = effectiveGameState;
     }
@@ -390,10 +531,48 @@ export function GamePanel() {
       }
       setLastMoveEvents(result.events);
     });
-  }
+  }, [activeRunId, effectiveGameState, replaceLocalGameState, runMoveMutation]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.repeat) return;
+      if (shouldIgnoreGameplayHotkey(event)) return;
+      if (!moveRunId || !effectiveGameState) return;
+      if (hasPendingUpgradeSelection || isAnyActionPending) return;
+
+      const normalizedKey = event.key.toLowerCase();
+
+      if (event.code === "Space" || normalizedKey === " ") {
+        event.preventDefault();
+        void handlePass();
+        return;
+      }
+
+      const direction: MoveDirection | null =
+        normalizedKey === "w"
+          ? "up"
+          : normalizedKey === "a"
+            ? "left"
+            : normalizedKey === "s"
+              ? "down"
+              : normalizedKey === "d"
+                ? "right"
+                : null;
+
+      if (!direction) return;
+      event.preventDefault();
+      void handleMove(direction);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [effectiveGameState, handleMove, handlePass, hasPendingUpgradeSelection, isAnyActionPending, moveRunId]);
 
   async function handleRerollUpgrades() {
     if (!moveRunId || !hasPendingUpgradeSelection) return;
+    if (!hasEnoughTreasureForReroll) return;
 
     const result = await runRerollMutation.mutateAsync({
       runId: moveRunId,
@@ -413,6 +592,7 @@ export function GamePanel() {
         pendingUpgradeOptions: result.upgradeOptions,
         pendingUpgradeCount: result.upgradeOptions.length,
         currentRerollCount: result.currentRerollCount ?? effectiveGameState.currentRerollCount,
+        nextRerollCost: result.nextRerollCost ?? effectiveGameState.nextRerollCost,
       });
     }
   }
@@ -465,11 +645,36 @@ export function GamePanel() {
 
       <h3>Keys</h3>
       <p>balance: {balanceQuery.data?.balance ?? "-"}</p>
+      <p>buy price per key: {KEY_PRICE_ETH} ETH</p>
       <button type="button" onClick={() => void balanceQuery.refetch()}>
         Refresh balance
       </button>
+      <label htmlFor="buy-keys-quantity-input">buy quantity</label>
+      <input
+        id="buy-keys-quantity-input"
+        value={buyKeysQuantityInput}
+        onChange={(event) => setBuyKeysQuantityInput(event.target.value)}
+        inputMode="numeric"
+      />
+      <button type="button" onClick={() => void handleBuyKeys()} disabled={!canBuyKeys}>
+        {buyKeysMutation.isPending
+          ? "Confirm in wallet..."
+          : isBuyKeysReceiptFetching
+            ? "Confirming tx..."
+            : "Buy keys (onchain)"}
+      </button>
+      <p>buy total value: {buyKeysValueEth} ETH</p>
+      <p>last buy tx hash: {buyKeysMutation.data ?? "-"}</p>
+      <p>last buy receipt: {buyKeysReceiptQuery.data?.status ?? "-"}</p>
+      {buyKeysValidationError ? <pre role="alert">buy keys validation: {buyKeysValidationError}</pre> : null}
       {balanceQuery.isError ? (
         <pre role="alert">balance error: {formatError(balanceQuery.error)}</pre>
+      ) : null}
+      {buyKeysMutation.isError ? (
+        <pre role="alert">buy keys tx error: {formatError(buyKeysMutation.error)}</pre>
+      ) : null}
+      {buyKeysReceiptQuery.isError ? (
+        <pre role="alert">buy keys receipt error: {formatError(buyKeysReceiptQuery.error)}</pre>
       ) : null}
 
       <h3>Start run</h3>
@@ -539,36 +744,54 @@ export function GamePanel() {
         {effectiveGameState?.pickups.length ?? 0} traps={effectiveGameState?.traps.length ?? 0} arrowTraps=
         {effectiveGameState?.arrowTraps.length ?? 0}
       </p>
-      <p>
-        legend: @ player, ? hidden, # wall/void, . room, : corridor, E enemy, &gt; stairs, C crate, I interactive, T
-        torch, O portal, $ pickup, ^ trap, A arrow trap
-      </p>
-      {mapLines.length > 0 ? <pre>{mapLines.join("\n")}</pre> : <p>No local map yet.</p>}
-      <p>Enemies detail</p>
-      {enemyLines.length > 0 ? <pre>{enemyLines.join("\n")}</pre> : <p>-</p>}
-      <p>Interactive detail</p>
-      {interactiveLines.length > 0 ? <pre>{interactiveLines.join("\n")}</pre> : <p>-</p>}
-      <p>Torches detail</p>
-      {torchLines.length > 0 ? <pre>{torchLines.join("\n")}</pre> : <p>-</p>}
-      <p>Portals detail</p>
-      {portalLines.length > 0 ? <pre>{portalLines.join("\n")}</pre> : <p>-</p>}
-      <p>Pickups detail</p>
-      {pickupLines.length > 0 ? <pre>{pickupLines.join("\n")}</pre> : <p>-</p>}
-      <p>Traps detail</p>
-      {trapLines.length > 0 ? <pre>{trapLines.join("\n")}</pre> : <p>-</p>}
-      <p>Arrow traps detail</p>
-      {arrowTrapLines.length > 0 ? <pre>{arrowTrapLines.join("\n")}</pre> : <p>-</p>}
+      {effectiveGameState ? (
+        <MapBoard
+          gameState={effectiveGameState}
+          onDirectionalAction={handleMove}
+          onPassAction={handlePass}
+          isActionLocked={hasPendingUpgradeSelection || isAnyActionPending}
+        />
+      ) : (
+        <p>No local map yet.</p>
+      )}
+
+      <details>
+        <summary>Debug map (ASCII)</summary>
+        {mapLines.length > 0 ? <pre>{mapLines.join("\n")}</pre> : <p>-</p>}
+      </details>
+
+      <details>
+        <summary>Debug entities</summary>
+        <p>Enemies detail</p>
+        {enemyLines.length > 0 ? <pre>{enemyLines.join("\n")}</pre> : <p>-</p>}
+        <p>Interactive detail</p>
+        {interactiveLines.length > 0 ? <pre>{interactiveLines.join("\n")}</pre> : <p>-</p>}
+        <p>Torches detail</p>
+        {torchLines.length > 0 ? <pre>{torchLines.join("\n")}</pre> : <p>-</p>}
+        <p>Portals detail</p>
+        {portalLines.length > 0 ? <pre>{portalLines.join("\n")}</pre> : <p>-</p>}
+        <p>Pickups detail</p>
+        {pickupLines.length > 0 ? <pre>{pickupLines.join("\n")}</pre> : <p>-</p>}
+        <p>Traps detail</p>
+        {trapLines.length > 0 ? <pre>{trapLines.join("\n")}</pre> : <p>-</p>}
+        <p>Arrow traps detail</p>
+        {arrowTrapLines.length > 0 ? <pre>{arrowTrapLines.join("\n")}</pre> : <p>-</p>}
+      </details>
 
       <h3>Upgrade Selection</h3>
       <p>pending selection: {hasPendingUpgradeSelection ? "true" : "false"}</p>
       <p>options: {pendingUpgradeOptions.length ? pendingUpgradeOptions.join(", ") : "-"}</p>
+      <p>next reroll cost: {nextRerollCost ?? "-"}</p>
+      <p>reroll affordable: {canEstimateNextRerollCost ? (hasEnoughTreasureForReroll ? "yes" : "no") : "-"}</p>
       <button
         type="button"
         onClick={() => void handleRerollUpgrades()}
-        disabled={!moveRunId || !hasPendingUpgradeSelection || runRerollMutation.isPending || selectUpgradeMutation.isPending}
+        disabled={isRerollDisabled}
+        title={rerollValidationError ?? "Reroll options"}
       >
         {runRerollMutation.isPending ? "Rerolling..." : "Reroll options"}
       </button>
+      {rerollValidationError ? <pre role="alert">reroll validation: {rerollValidationError}</pre> : null}
       <p>last reroll success: {runRerollMutation.data ? String(runRerollMutation.data.success) : "-"}</p>
       <p>last reroll cost: {runRerollMutation.data?.treasureCost ?? "-"}</p>
       <p>last reroll treasure: {runRerollMutation.data?.newTreasure ?? "-"}</p>
@@ -592,13 +815,12 @@ export function GamePanel() {
 
       <h3>Move</h3>
       <p>runId used for move: {moveRunId ?? "-"}</p>
+      <p>Shortcuts: W/A/S/D = move, Space = skip.</p>
       {(() => {
         const passValidationError = validatePass();
         const isPassDisabled =
           Boolean(passValidationError) ||
-          runMoveMutation.isPending ||
-          runRerollMutation.isPending ||
-          selectUpgradeMutation.isPending;
+          isAnyActionPending;
 
         return (
           <button
@@ -616,9 +838,7 @@ export function GamePanel() {
         const moveValidationError = validateMove(control.direction);
         const isDisabled =
           Boolean(moveValidationError) ||
-          runMoveMutation.isPending ||
-          runRerollMutation.isPending ||
-          selectUpgradeMutation.isPending;
+          isAnyActionPending;
 
         return (
           <button
@@ -652,6 +872,8 @@ export function GamePanel() {
           runMoveMutation.isPending ||
           runRerollMutation.isPending ||
           selectUpgradeMutation.isPending
+          || buyKeysMutation.isPending
+          || isBuyKeysReceiptFetching
         }
       >
         Refresh all

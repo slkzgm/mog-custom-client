@@ -34,6 +34,7 @@ export function useRunRerollMutation() {
             pendingUpgradeOptions: result.upgradeOptions,
             pendingUpgradeCount: result.upgradeOptions.length,
             currentRerollCount: result.currentRerollCount ?? current.gameState.currentRerollCount,
+            nextRerollCost: result.nextRerollCost ?? current.gameState.nextRerollCost,
           },
         };
       });

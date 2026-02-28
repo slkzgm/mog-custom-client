@@ -1,9 +1,7 @@
-import {
-  useAbstractClient,
-  useLoginWithAbstract,
-} from "@abstract-foundation/agw-react";
-import { useAccount } from "wagmi";
+import { stringToHex } from "viem";
+import { useAccount, useConnect, useDisconnect, useSignMessage, useSwitchChain, useWalletClient } from "wagmi";
 
+import { appConfig } from "../../../app/config";
 import { ApiError } from "../../../lib/http/api-error";
 import { useAuthSessionQuery } from "../use-auth-session-query";
 import { useAuthSignInMutation } from "../use-auth-sign-in-mutation";
@@ -25,25 +23,92 @@ function shorten(value: string, keep = 12): string {
 }
 
 export function AuthPanel() {
-  const { login, logout } = useLoginWithAbstract();
-  const agwAccount = useAccount();
-  const abstractClient = useAbstractClient();
+  const walletAccount = useAccount();
+  const connectMutation = useConnect();
+  const disconnectMutation = useDisconnect();
+  const signMessageMutation = useSignMessage();
+  const switchChainMutation = useSwitchChain();
+  const walletClientQuery = useWalletClient();
   const authSessionQuery = useAuthSessionQuery();
   const signInMutation = useAuthSignInMutation();
-  const profileQuery = usePublicProfileQuery(agwAccount.address);
+  const profileQuery = usePublicProfileQuery(walletAccount.address);
 
-  const agwAddress = agwAccount.address;
-  const canSignIn = Boolean(agwAddress && abstractClient.data && !signInMutation.isPending);
+  const walletAddress = walletAccount.address;
+  const walletChainId = walletAccount.chainId;
+  const expectedChainId = appConfig.auth.chainId;
+  const walletConnectorId = walletAccount.connector?.id ?? "-";
+  const walletConnectorName = walletAccount.connector?.name ?? "-";
+  const agwConnector = connectMutation.connectors.find((connector) => connector.id === "xyz.abs.privy");
+  const eoaConnectors = connectMutation.connectors.filter((connector) => connector.id !== "xyz.abs.privy");
+  const isOnExpectedChain = walletChainId === expectedChainId;
+  const authValidationError = !walletAddress
+    ? "Wallet not connected."
+    : !isOnExpectedChain
+      ? `Wrong chain for SIWE (expected ${expectedChainId}, got ${walletChainId ?? "-"})`
+      : null;
+  const canSignIn = Boolean(
+    !authValidationError &&
+      !signInMutation.isPending &&
+      !signMessageMutation.isPending &&
+      !connectMutation.isPending &&
+      !switchChainMutation.isPending,
+  );
+
+  function handleConnectWithAbstract() {
+    if (!agwConnector) return;
+    connectMutation.connect({
+      connector: agwConnector,
+    });
+  }
+
+  function handleConnectWithEoa(connectorId: string) {
+    const connector = eoaConnectors.find((candidate) => candidate.id === connectorId);
+    if (!connector) return;
+    connectMutation.connect({
+      connector,
+    });
+  }
+
+  function handleSwitchToExpectedChain() {
+    switchChainMutation.switchChain({
+      chainId: expectedChainId,
+    });
+  }
 
   async function handleSignIn() {
-    if (!agwAddress || !abstractClient.data) return;
+    if (!walletAddress || !walletAccount.isConnected || !isOnExpectedChain) return;
 
     await signInMutation.mutateAsync({
-      address: agwAddress,
-      chainId: agwAccount.chainId,
+      address: walletAddress,
+      chainId: expectedChainId,
       signMessage: async (message) => {
-        const signature = await abstractClient.data.signMessage({ message });
-        return String(signature);
+        const account = walletAddress as `0x${string}`;
+        try {
+          return String(
+            await signMessageMutation.signMessageAsync({
+              message,
+              account,
+            }),
+          );
+        } catch (signError) {
+          const walletClient = walletClientQuery.data;
+          if (!walletClient) throw signError;
+
+          const payload = stringToHex(message);
+          try {
+            const signature = await walletClient.request({
+              method: "personal_sign",
+              params: [payload, account],
+            });
+            return String(signature);
+          } catch {
+            const signature = await walletClient.request({
+              method: "personal_sign",
+              params: [account, payload],
+            });
+            return String(signature);
+          }
+        }
       },
     });
 
@@ -54,15 +119,39 @@ export function AuthPanel() {
     <section>
       <h2>Auth</h2>
 
-      <p>Wallet status: {agwAccount.status}</p>
-      <p>AGW address (used for SIWE): {agwAddress ?? "-"}</p>
-      <p>Wallet chainId: {agwAccount.chainId ?? "-"}</p>
+      <p>Wallet status: {walletAccount.status}</p>
+      <p>Wallet address (used for SIWE): {walletAddress ?? "-"}</p>
+      <p>Wallet chainId: {walletChainId ?? "-"}</p>
+      <p>SIWE expected chainId: {expectedChainId}</p>
+      <p>Wallet connector: {walletConnectorName}</p>
+      <p>Wallet connector id: {walletConnectorId}</p>
 
-      <button type="button" onClick={login} disabled={agwAccount.isConnected}>
-        Connect wallet
+      <button
+        type="button"
+        onClick={handleConnectWithAbstract}
+        disabled={walletAccount.isConnected || !agwConnector || connectMutation.isPending}
+      >
+        Connect AGW
       </button>
-      <button type="button" onClick={logout} disabled={!agwAccount.isConnected}>
+      {eoaConnectors.map((connector) => (
+        <button
+          key={connector.id}
+          type="button"
+          onClick={() => handleConnectWithEoa(connector.id)}
+          disabled={walletAccount.isConnected || connectMutation.isPending}
+        >
+          Connect {connector.name}
+        </button>
+      ))}
+      <button type="button" onClick={() => disconnectMutation.disconnect()} disabled={!walletAccount.isConnected}>
         Disconnect wallet
+      </button>
+      <button
+        type="button"
+        onClick={handleSwitchToExpectedChain}
+        disabled={!walletAccount.isConnected || isOnExpectedChain || switchChainMutation.isPending}
+      >
+        {switchChainMutation.isPending ? "Switching chain..." : `Switch to ${expectedChainId}`}
       </button>
 
       <p>Public profile name: {profileQuery.data?.profileName ?? "-"}</p>
@@ -71,7 +160,7 @@ export function AuthPanel() {
       <button
         type="button"
         onClick={() => void profileQuery.refetch()}
-        disabled={!agwAddress || profileQuery.isFetching}
+        disabled={!walletAddress || profileQuery.isFetching}
       >
         Refresh profile
       </button>
@@ -90,8 +179,11 @@ export function AuthPanel() {
 
       <hr />
       <button type="button" onClick={() => void handleSignIn()} disabled={!canSignIn}>
-        {signInMutation.isPending ? "Signing in..." : "Sign in (nonce + SIWE + verify)"}
+        {signInMutation.isPending || signMessageMutation.isPending
+          ? "Signing in..."
+          : "Sign in (nonce + SIWE + verify)"}
       </button>
+      {authValidationError ? <pre role="alert">sign-in validation: {authValidationError}</pre> : null}
       <p>Last nonce: {signInMutation.data?.nonce ?? "-"}</p>
       <p>Last verify ok: {signInMutation.data?.verifyOk ? "true" : "false"}</p>
       <p>Last signature: {signInMutation.data?.signature ? shorten(signInMutation.data.signature) : "-"}</p>
@@ -104,8 +196,11 @@ export function AuthPanel() {
       {signInMutation.isError ? (
         <pre role="alert">Sign-in error: {formatError(signInMutation.error)}</pre>
       ) : null}
-      {abstractClient.isError ? (
-        <pre role="alert">Abstract client error: {formatError(abstractClient.error)}</pre>
+      {connectMutation.isError ? (
+        <pre role="alert">Connect error: {formatError(connectMutation.error)}</pre>
+      ) : null}
+      {signMessageMutation.isError ? (
+        <pre role="alert">Sign-message error: {formatError(signMessageMutation.error)}</pre>
       ) : null}
     </section>
   );

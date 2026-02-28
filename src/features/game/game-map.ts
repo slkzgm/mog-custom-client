@@ -32,8 +32,8 @@ function positionKey(x: number, y: number): string {
   return `${x},${y}`;
 }
 
-function toEntityLookup(entities: MapEntitySnapshot[]): Map<string, MapEntitySnapshot> {
-  const lookup = new Map<string, MapEntitySnapshot>();
+function toEntityLookup<T extends { x: number; y: number }>(entities: T[]): Map<string, T> {
+  const lookup = new Map<string, T>();
   for (const entity of entities) {
     lookup.set(positionKey(entity.x, entity.y), entity);
   }
@@ -53,7 +53,9 @@ function toTwoDigits(value: number): string {
 
 function interactiveToChar(entity: MapEntitySnapshot): string {
   if (entity.type === "stairs") return ">";
+  if (entity.type === "fountain") return "F";
   if (entity.type === "crate") return "C";
+  if (entity.type === "pot") return "P";
   if (entity.type === "door") return "D";
   return "I";
 }
@@ -65,12 +67,8 @@ function normalizeInteractiveType(type: string): string {
 export function isBreakableInteractive(entity: MapEntitySnapshot): boolean {
   const type = normalizeInteractiveType(entity.type);
 
-  // Chests and stairs are resolved by movement/adjacency flow, not break actions.
-  if (type === "chest" || type === "stairs" || type === "door") {
-    return false;
-  }
-
-  return true;
+  // Align with official behavior: only pots and crates use explicit break actions.
+  return type === "pot" || type === "crate";
 }
 
 export function getMoveTarget(
@@ -108,6 +106,21 @@ export function findEnemyAtPosition(
   }
 
   return null;
+}
+
+function normalizeEnemyLabel(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.trim().toLowerCase();
+}
+
+export function isGhostEnemy(enemy: EnemySnapshot): boolean {
+  const type = normalizeEnemyLabel(enemy.type);
+  const spriteType = normalizeEnemyLabel(enemy.spriteType);
+  return type.includes("ghost") || spriteType.includes("ghost");
+}
+
+export function isAttackableEnemy(enemy: EnemySnapshot): boolean {
+  return !isGhostEnemy(enemy);
 }
 
 export function findBreakableInteractiveAtPosition(
@@ -161,8 +174,9 @@ export function buildAsciiMap(gameState: GameStateSnapshot): string[] {
         continue;
       }
 
-      if (enemiesByPosition.has(key)) {
-        renderedRow += "E ";
+      const enemy = enemiesByPosition.get(key);
+      if (enemy) {
+        renderedRow += `${isGhostEnemy(enemy) ? "G" : "E"} `;
         continue;
       }
 

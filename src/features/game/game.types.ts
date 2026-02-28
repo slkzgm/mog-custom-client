@@ -37,6 +37,9 @@ export interface MapEntitySnapshot {
   y: number;
   type: string;
   id: string | null;
+  value: number | null;
+  damage: number | null;
+  tileIndex: number | null;
 }
 
 export interface GameBuffSnapshot {
@@ -72,6 +75,7 @@ export interface GameStateSnapshot {
   createdAt: string | null;
   lastActionAt: string | null;
   currentRerollCount: number | null;
+  nextRerollCost: number | null;
   teleportUseCount: number | null;
   skDefeated: boolean | null;
   pendingUpgradeCount: number | null;
@@ -122,6 +126,7 @@ export interface RunRerollResult {
   success: boolean;
   upgradeOptions: string[];
   treasureCost: number | null;
+  nextRerollCost: number | null;
   newTreasure: number | null;
   currentRerollCount: number | null;
 }
