@@ -1,4 +1,5 @@
 import { apiRequest } from "../../lib/http/api-client";
+import { ApiError } from "../../lib/http/api-error";
 import type {
   ActiveRunSnapshot,
   CreateRunResult,
@@ -342,13 +343,32 @@ export async function fetchKeysBalance(): Promise<KeysBalance> {
 }
 
 export async function createRun(keysAmount: number): Promise<CreateRunResult> {
-  const payload = await apiRequest<unknown>("runs/create", {
-    method: "POST",
-    credentials: "include",
-    body: {
-      keysAmount,
-    },
-  });
+  let payload: unknown;
+  try {
+    payload = await apiRequest<unknown>("runs/create", {
+      method: "POST",
+      credentials: "include",
+      body: {
+        keysAmount,
+      },
+    });
+  } catch (error) {
+    // Observed backend quirk: create can occasionally return INTERNAL_ERROR even when
+    // a run becomes available right after. Try to recover from active run state.
+    if (error instanceof ApiError && error.code === "INTERNAL_ERROR") {
+      const activeRun = await fetchActiveRun().catch(() => null);
+      if (activeRun?.activeRunId) {
+        const runState = await fetchRunState(activeRun.activeRunId).catch(() => null);
+        return {
+          runId: activeRun.activeRunId,
+          keysUsed: runState?.gameState?.keysUsed ?? null,
+          gameState: runState?.gameState ?? null,
+        };
+      }
+    }
+
+    throw error;
+  }
 
   const source = asRecord(payload);
   if (!source) {

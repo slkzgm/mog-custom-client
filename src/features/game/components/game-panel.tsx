@@ -60,11 +60,9 @@ function validateStartRunInput(params: {
     return "keysAmount must be >= 1.";
   }
 
-  if (params.balance === null || params.balance === undefined) {
-    return "Unable to validate keysAmount without balance.";
-  }
-
-  if (params.parsedKeysAmount > params.balance) {
+  // Balance endpoint can intermittently fail. Allow start attempts when balance
+  // is unknown and rely on server-side validation.
+  if (typeof params.balance === "number" && params.parsedKeysAmount > params.balance) {
     return "keysAmount exceeds current balance.";
   }
 
@@ -281,6 +279,24 @@ export function GamePanel() {
     setLastMoveEvents([]);
   }
 
+  async function recoverRunStateFromServer(runId: string) {
+    const result = await runStateQuery.refetch();
+    if (result.data?.gameState && result.data.gameState.runId === runId) {
+      replaceLocalGameState(result.data.gameState);
+      return;
+    }
+
+    // Fallback to direct API-backed query update if refetch resolved stale payload.
+    const latest = await activeRunQuery.refetch();
+    const latestRunId = latest.data?.activeRunId ?? null;
+    if (latestRunId === runId) {
+      const resumed = await runStateQuery.refetch();
+      if (resumed.data?.gameState) {
+        replaceLocalGameState(resumed.data.gameState);
+      }
+    }
+  }
+
   const resumedGameState =
     runStateQuery.data?.gameState && runStateQuery.data.gameState.runId === activeRunId
       ? runStateQuery.data.gameState
@@ -466,6 +482,7 @@ export function GamePanel() {
       if (localGameStateRef.current?.runId !== effectiveGameState?.runId) {
         localGameStateRef.current = effectiveGameState;
       }
+      const fallbackRunId = localGameStateRef.current?.runId ?? activeRunId;
 
       await gameActionQueue.enqueue(async () => {
         const queuedState = localGameStateRef.current;
@@ -505,15 +522,20 @@ export function GamePanel() {
           replaceLocalGameState(result.gameState);
         }
         setLastMoveEvents(result.events);
+      }).catch(async (error: unknown) => {
+        if (error instanceof ApiError && error.code === "INTERNAL_ERROR" && fallbackRunId) {
+          await recoverRunStateFromServer(fallbackRunId);
+        }
       });
     },
-    [activeRunId, effectiveGameState, replaceLocalGameState, runMoveMutation],
+    [activeRunId, activeRunQuery, effectiveGameState, replaceLocalGameState, runMoveMutation, runStateQuery],
   );
 
   const handlePass = useCallback(async () => {
     if (localGameStateRef.current?.runId !== effectiveGameState?.runId) {
       localGameStateRef.current = effectiveGameState;
     }
+    const fallbackRunId = localGameStateRef.current?.runId ?? activeRunId;
 
     await gameActionQueue.enqueue(async () => {
       const queuedState = localGameStateRef.current;
@@ -530,8 +552,12 @@ export function GamePanel() {
         replaceLocalGameState(result.gameState);
       }
       setLastMoveEvents(result.events);
+    }).catch(async (error: unknown) => {
+      if (error instanceof ApiError && error.code === "INTERNAL_ERROR" && fallbackRunId) {
+        await recoverRunStateFromServer(fallbackRunId);
+      }
     });
-  }, [activeRunId, effectiveGameState, replaceLocalGameState, runMoveMutation]);
+  }, [activeRunId, activeRunQuery, effectiveGameState, replaceLocalGameState, runMoveMutation, runStateQuery]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
