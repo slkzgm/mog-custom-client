@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://mog.onchainheroes.xyz/api/:match*"
+    },
+    {
+      "source": "/:match*",
+      "destination": "/"
+    }
+  ]
+}
