@@ -51,6 +51,7 @@ interface MapBoardProps {
   onDirectionalAction?: (direction: MoveDirection) => void | Promise<void>;
   onPassAction?: () => void | Promise<void>;
   isActionLocked?: boolean;
+  variant?: "default" | "immersive";
 }
 
 function matrixAt(matrix: number[][] | null, x: number, y: number): number | null {
@@ -143,6 +144,29 @@ function pickupBadge(entity: MapEntitySnapshot): string {
   if (type.includes("marble")) return `m+${value ?? "?"}`;
   if (type.includes("hongbao")) return `h+${value ?? "?"}`;
   return value !== null ? `${shortTypeCode(type)}+${value}` : shortTypeCode(type);
+}
+
+function clampRatio(value: number | null, maxValue: number | null): number | null {
+  if (value === null || maxValue === null || maxValue <= 0) return null;
+  return Math.max(0, Math.min(1, value / maxValue));
+}
+
+function entityTokenSymbol(kind: CellEntityKind | null, symbol: string): string {
+  if (kind === "player") return "@";
+  if (kind === "enemy") return symbol === "G" ? "G" : "!";
+  if (kind === "interactive") return symbol;
+  if (kind === "pickup") return "+";
+  if (kind === "trap" || kind === "arrow-trap") return "^";
+  if (kind === "portal") return "O";
+  if (kind === "torch") return "*";
+  return symbol;
+}
+
+function tileAccentClass(tile: number | null): string {
+  if (tile === 2) return "map-cell-accent-wall";
+  if (tile === 1) return "map-cell-accent-room";
+  if (tile === 0) return "map-cell-accent-corridor";
+  return "map-cell-accent-unknown";
 }
 
 function buildViewport(gameState: GameStateSnapshot, mode: "focus" | "full"): Viewport {
@@ -385,9 +409,16 @@ function resolveEntityData(params: {
   };
 }
 
-export function MapBoard({ gameState, onDirectionalAction, onPassAction, isActionLocked = false }: MapBoardProps) {
+export function MapBoard({
+  gameState,
+  onDirectionalAction,
+  onPassAction,
+  isActionLocked = false,
+  variant = "default",
+}: MapBoardProps) {
   const [viewMode, setViewMode] = useState<"focus" | "full">("focus");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const isImmersive = variant === "immersive";
 
   const viewport = useMemo(() => buildViewport(gameState, viewMode), [gameState, viewMode]);
   const hintsByKey = useMemo(() => buildHints(gameState), [gameState]);
@@ -507,11 +538,14 @@ export function MapBoard({ gameState, onDirectionalAction, onPassAction, isActio
   }
 
   return (
-    <div className="map-board-shell">
+    <div className={`map-board-shell ${variant === "immersive" ? "map-board-shell-immersive" : ""}`}>
       <div className="map-board-toolbar">
-        <p>
-          View: <strong>{viewMode === "focus" ? "Focused" : "Full map"}</strong>
-        </p>
+        <div>
+          <p className="map-board-toolbar-label">View</p>
+          <p>
+            <strong>{viewMode === "focus" ? "Focused" : "Full map"}</strong>
+          </p>
+        </div>
         <div className="map-board-toolbar-actions">
           <button
             type="button"
@@ -532,38 +566,54 @@ export function MapBoard({ gameState, onDirectionalAction, onPassAction, isActio
         </div>
       </div>
 
-      <p className="map-board-legend">
-        Legend: @ player, E enemy, G ghost, &gt; stairs, H chest, F fountain, C crate, P pot, I interactive, $ pickup, ^ trap,
-        A arrow trap, O portal, T torch, # wall, . room, : corridor.
-      </p>
-      <p className="map-board-legend">
-        Adjacent action hints: green=move, orange=break, red=attack, gray=blocked.
-      </p>
-      <p className="map-board-legend">
-        Mouse: left click = action/inspect (click self to skip), right click = inspect only.
-      </p>
-      <div className="map-board-hud">
-        {hudItems.map((item) => (
-          <div key={item.label} className="map-board-hud-item">
-            <span className="map-board-hud-label">{item.label}</span>
-            <strong className="map-board-hud-value">{item.value}</strong>
+      {!isImmersive ? (
+        <>
+          <div className="map-board-hud">
+            {hudItems.map((item) => (
+              <div key={item.label} className="map-board-hud-item">
+                <span className="map-board-hud-label">{item.label}</span>
+                <strong className="map-board-hud-value">{item.value}</strong>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <details className="map-board-help">
+            <summary>Legend & controls</summary>
+            <p className="map-board-legend">
+              Legend: @ player, E enemy, G ghost, &gt; stairs, H chest, F fountain, C crate, P pot, I interactive, $ pickup, ^ trap,
+              A arrow trap, O portal, T torch, # wall, . room, : corridor.
+            </p>
+            <p className="map-board-legend">
+              Adjacent action hints: green=move, orange=break, red=attack, gray=blocked.
+            </p>
+            <p className="map-board-legend">
+              Mouse: left click = action/inspect (click self to skip), right click = inspect only.
+            </p>
+          </details>
+        </>
+      ) : null}
 
       <div className="map-board-layout">
         <div className="map-board-scroll">
-          <div className="map-grid" style={{ gridTemplateColumns: `44px repeat(${xValues.length}, 40px)` }}>
-            <div className="map-grid-axis map-grid-corner">y\\x</div>
-            {xValues.map((x) => (
-              <div key={`x-${x}`} className="map-grid-axis">
-                {asTwoDigits(x)}
-              </div>
-            ))}
+          <div
+            className="map-grid"
+            style={{
+              gridTemplateColumns: isImmersive
+                ? `repeat(${xValues.length}, var(--map-cell-size, 40px))`
+                : `var(--map-axis-size, 44px) repeat(${xValues.length}, var(--map-cell-size, 40px))`,
+            }}
+          >
+            {!isImmersive ? <div className="map-grid-axis map-grid-corner">y\\x</div> : null}
+            {!isImmersive
+              ? xValues.map((x) => (
+                  <div key={`x-${x}`} className="map-grid-axis">
+                    {asTwoDigits(x)}
+                  </div>
+                ))
+              : null}
 
             {yValues.map((y) => (
               <div key={`row-${y}`} className="map-grid-row">
-                <div className="map-grid-axis">{asTwoDigits(y)}</div>
+                {!isImmersive ? <div className="map-grid-axis">{asTwoDigits(y)}</div> : null}
                 {xValues.map((x) => {
                   const key = keyOf(x, y);
                   const isPlayerCell = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
@@ -597,6 +647,8 @@ export function MapBoard({ gameState, onDirectionalAction, onPassAction, isActio
                   const isCellActionable = isHintClickable || isSelfSkipClickable;
                   const enemyOnCell = enemiesByKey.get(key);
                   const isGhostCell = Boolean(enemyOnCell && isGhostEnemy(enemyOnCell));
+                  const hpRatio = enemyOnCell ? clampRatio(enemyOnCell.hp, enemyOnCell.maxHp) : null;
+                  const tokenSymbol = entityTokenSymbol(entity.entityKind, symbol);
 
                   const classes = [
                     "map-cell",
@@ -651,11 +703,35 @@ export function MapBoard({ gameState, onDirectionalAction, onPassAction, isActio
                       }}
                       data-direction={hint ? directionArrow(hint.direction) : undefined}
                     >
-                      <span className="map-cell-main">{symbol}</span>
-                      {primaryBadge ? <span className="map-cell-badge map-cell-badge-primary">{primaryBadge}</span> : null}
-                      {secondaryBadge ? (
-                        <span className="map-cell-badge map-cell-badge-secondary">{secondaryBadge}</span>
-                      ) : null}
+                      <span className={`map-cell-surface ${tileAccentClass(tileValue)}`} />
+                      {fog !== "hidden" ? <span className="map-cell-gridline" /> : null}
+                      {hint ? <span className={`map-cell-hint-arrow map-cell-hint-arrow-${hint.type}`} /> : null}
+                      {isImmersive ? (
+                        <>
+                          {entity.entityKind ? (
+                            <span className={`map-cell-token map-cell-token-${entity.entityKind} ${isGhostCell ? "map-cell-token-ghost" : ""}`}>
+                              <span className="map-cell-token-symbol">{tokenSymbol}</span>
+                            </span>
+                          ) : (
+                            <span className="map-cell-ambient-dot" />
+                          )}
+                          {hpRatio !== null ? (
+                            <span className="map-cell-healthbar">
+                              <span className="map-cell-healthbar-fill" style={{ width: `${Math.max(12, Math.round(hpRatio * 100))}%` }} />
+                            </span>
+                          ) : null}
+                          {primaryBadge ? <span className="map-cell-chip map-cell-chip-primary">{primaryBadge}</span> : null}
+                          {secondaryBadge ? <span className="map-cell-chip map-cell-chip-secondary">{secondaryBadge}</span> : null}
+                        </>
+                      ) : (
+                        <>
+                          <span className="map-cell-main">{symbol}</span>
+                          {primaryBadge ? <span className="map-cell-badge map-cell-badge-primary">{primaryBadge}</span> : null}
+                          {secondaryBadge ? (
+                            <span className="map-cell-badge map-cell-badge-secondary">{secondaryBadge}</span>
+                          ) : null}
+                        </>
+                      )}
                     </button>
                   );
                 })}
@@ -664,7 +740,7 @@ export function MapBoard({ gameState, onDirectionalAction, onPassAction, isActio
           </div>
         </div>
 
-        <aside className="map-inspector">
+        <aside className={`map-inspector ${isImmersive ? "map-inspector-immersive" : ""}`}>
           <h4>Tile inspector</h4>
           {inspectorData ? (
             <>
