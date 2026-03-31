@@ -820,6 +820,11 @@ summary {
   z-index: 4;
 }
 
+.map2-control-stack {
+  display: grid;
+  gap: 10px;
+}
+
 .map2-segmented {
   display: inline-flex;
   gap: 6px;
@@ -833,6 +838,46 @@ summary {
 .map2-segmented button {
   border-radius: 999px;
   min-width: 72px;
+}
+
+.map2-toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(84, 110, 139, 0.24);
+  border-radius: 16px;
+  background: rgba(10, 16, 24, 0.78);
+  backdrop-filter: blur(14px);
+}
+
+.map2-toolbar button {
+  min-width: 48px;
+}
+
+.map2-toolbar-value {
+  min-width: 78px;
+}
+
+.map2-dpad {
+  width: 192px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(84, 110, 139, 0.24);
+  border-radius: 16px;
+  background: rgba(10, 16, 24, 0.78);
+  backdrop-filter: blur(14px);
+}
+
+.map2-dpad button {
+  min-height: 40px;
+}
+
+.map2-dpad-spacer {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .map2-stage {
@@ -907,6 +952,10 @@ summary {
 
 .map2-cell-unknown .map2-cell-base {
   background: #10161f;
+}
+
+.map2-cell-void .map2-cell-base {
+  background: #020304;
 }
 
 .map2-fog-hidden .map2-cell-base {
@@ -1059,6 +1108,15 @@ summary {
   opacity: 0;
 }
 
+.map2-fog-remembered .map2-cell-base,
+.map2-fog-remembered .map2-token {
+  opacity: 0.92;
+}
+
+.map2-fog-remembered .map2-health {
+  opacity: 0.7;
+}
+
 .map2-cell-wall {
   box-shadow: inset 0 0 0 1px rgba(30, 30, 30, 0.45);
 }
@@ -1093,6 +1151,17 @@ summary {
   backdrop-filter: blur(14px);
 }
 
+.map2-card h3 {
+  font-size: 0.96rem;
+}
+
+.map2-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .map2-kv {
   display: flex;
   justify-content: space-between;
@@ -1103,6 +1172,128 @@ summary {
 
 .map2-kv strong {
   color: var(--text);
+}
+
+.map2-card-note {
+  margin-top: 10px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.map2-sync-pill {
+  border: 1px solid rgba(84, 110, 139, 0.3);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.map2-sync-pill-syncing {
+  border-color: rgba(109, 211, 255, 0.35);
+  color: var(--accent);
+}
+
+.map2-sync-pill-synced,
+.map2-sync-pill-local {
+  border-color: rgba(108, 205, 147, 0.35);
+  color: #8de0a8;
+}
+
+.map2-sync-pill-error {
+  border-color: rgba(255, 143, 143, 0.35);
+  color: var(--danger);
+}
+
+.map2-verdict-pill {
+  border: 1px solid rgba(84, 110, 139, 0.3);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.map2-verdict-pill-collecting {
+  border-color: rgba(109, 211, 255, 0.35);
+  color: var(--accent);
+}
+
+.map2-verdict-pill-likely-global {
+  border-color: rgba(108, 205, 147, 0.35);
+  color: #8de0a8;
+}
+
+.map2-verdict-pill-suspicious-windowed {
+  border-color: rgba(255, 143, 143, 0.35);
+  color: var(--danger);
+}
+
+.map2-entity-groups {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.map2-entity-group {
+  border-color: rgba(84, 110, 139, 0.16);
+  background: rgba(13, 20, 29, 0.64);
+}
+
+.map2-entity-group summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.map2-entity-group summary span {
+  color: var(--text);
+}
+
+.map2-entity-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.map2-probe-list,
+.map2-probe-notes {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.map2-entity-row {
+  border: 1px solid rgba(84, 110, 139, 0.14);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(9, 14, 21, 0.72);
+}
+
+.map2-entity-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.map2-entity-row-main span {
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
+.map2-entity-row-meta,
+.map2-empty-state {
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 0.76rem;
 }
 
 

@@ -2,6 +2,9 @@ import { z } from "zod";
 
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().min(1).optional(),
+  VITE_ENABLE_ENCOUNTER_CATALOG: z.string().optional(),
+  VITE_ENABLE_MAP_FOG_MEMORY: z.string().optional(),
+  VITE_ENABLE_MAP_SNAPSHOT_PROBE: z.string().optional(),
   VITE_PUSHER_APP_KEY: z.string().min(1).optional(),
   VITE_PUSHER_CLUSTER: z.string().min(1).optional(),
   VITE_PUSHER_CHANNEL: z.string().min(1).optional(),
@@ -62,8 +65,24 @@ function parseSiweExpirationDays(rawValue: string | undefined): number {
   return integer;
 }
 
+function parseFeatureFlag(rawValue: string | undefined, defaultValue: boolean): boolean {
+  if (rawValue === undefined) return defaultValue;
+
+  const normalized = rawValue.trim().toLowerCase();
+  if (!normalized) return defaultValue;
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+
+  return defaultValue;
+}
+
 export const appConfig = {
   apiBaseUrl: normalizeApiBaseUrl(env.VITE_API_BASE_URL),
+  features: {
+    encounterCatalog: parseFeatureFlag(env.VITE_ENABLE_ENCOUNTER_CATALOG, import.meta.env.DEV),
+    mapFogMemory: parseFeatureFlag(env.VITE_ENABLE_MAP_FOG_MEMORY, true),
+    mapSnapshotProbe: parseFeatureFlag(env.VITE_ENABLE_MAP_SNAPSHOT_PROBE, import.meta.env.DEV),
+  },
   pusher: {
     appKey: env.VITE_PUSHER_APP_KEY ?? "d21f2a24538872113358",
     cluster: env.VITE_PUSHER_CLUSTER ?? "mt1",

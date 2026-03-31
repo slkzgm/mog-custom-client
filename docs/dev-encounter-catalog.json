@@ -1,0 +1,620 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-31T21:18:00.739Z",
+  "entries": {
+    "enemies": [
+      {
+        "key": "chaser",
+        "category": "enemies",
+        "displayName": "chaser (skeleton)",
+        "type": "chaser",
+        "sightings": 922,
+        "firstSeenAt": "2026-03-31T19:48:27.496Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          3,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "enemy_5",
+          "enemy_9",
+          "enemy_11",
+          "enemy_10",
+          "enemy_1",
+          "enemy_19"
+        ],
+        "sampleSpriteTypes": [
+          "skeleton",
+          "skullbat",
+          "skeleton2",
+          "ghost2",
+          "ghost",
+          "mimic"
+        ],
+        "sampleValues": [],
+        "sampleDamage": [
+          0,
+          1,
+          3,
+          4,
+          6,
+          7
+        ],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "pattern",
+        "category": "enemies",
+        "displayName": "pattern (slime)",
+        "type": "pattern",
+        "sightings": 657,
+        "firstSeenAt": "2026-03-31T19:52:50.193Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          1,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "enemy_3",
+          "enemy_2",
+          "enemy_7",
+          "enemy_16",
+          "enemy_8",
+          "enemy_6"
+        ],
+        "sampleSpriteTypes": [
+          "slime",
+          "redslime"
+        ],
+        "sampleValues": [],
+        "sampleDamage": [
+          1,
+          2
+        ],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "erratic",
+        "category": "enemies",
+        "displayName": "erratic (bat)",
+        "type": "erratic",
+        "sightings": 337,
+        "firstSeenAt": "2026-03-31T19:48:28.371Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          2,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "enemy_18",
+          "enemy_14",
+          "enemy_15",
+          "enemy_13",
+          "enemy_11",
+          "enemy_7"
+        ],
+        "sampleSpriteTypes": [
+          "bat"
+        ],
+        "sampleValues": [],
+        "sampleDamage": [
+          2,
+          3,
+          4,
+          6
+        ],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "stationary",
+        "category": "enemies",
+        "displayName": "stationary (shroom)",
+        "type": "stationary",
+        "sightings": 90,
+        "firstSeenAt": "2026-03-31T19:55:46.230Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          7,
+          8,
+          9
+        ],
+        "sampleIds": [
+          "enemy_19",
+          "enemy_0",
+          "enemy_15",
+          "enemy_18",
+          "enemy_14",
+          "enemy_12"
+        ],
+        "sampleSpriteTypes": [
+          "shroom"
+        ],
+        "sampleValues": [],
+        "sampleDamage": [
+          8,
+          12
+        ],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "wobble",
+        "category": "enemies",
+        "displayName": "wobble (kingslime)",
+        "type": "wobble",
+        "sightings": 89,
+        "firstSeenAt": "2026-03-31T19:57:30.474Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          8,
+          9
+        ],
+        "sampleIds": [
+          "enemy_17",
+          "enemy_22",
+          "enemy_24",
+          "enemy_23",
+          "enemy_5",
+          "enemy_21"
+        ],
+        "sampleSpriteTypes": [
+          "kingslime"
+        ],
+        "sampleValues": [],
+        "sampleDamage": [
+          5,
+          7
+        ],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      }
+    ],
+    "interactive": [
+      {
+        "key": "pot",
+        "category": "interactive",
+        "displayName": "pot",
+        "type": "pot",
+        "sightings": 757,
+        "firstSeenAt": "2026-03-31T19:52:59.289Z",
+        "lastSeenAt": "2026-03-31T21:17:57.134Z",
+        "floors": [
+          2,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "pot_10",
+          "pot_4",
+          "pot_2",
+          "pot_7",
+          "pot_6",
+          "pot_0"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [
+          10,
+          11,
+          12,
+          23,
+          24,
+          25
+        ],
+        "isRevealedStates": []
+      },
+      {
+        "key": "crate",
+        "category": "interactive",
+        "displayName": "crate",
+        "type": "crate",
+        "sightings": 743,
+        "firstSeenAt": "2026-03-31T19:52:59.289Z",
+        "lastSeenAt": "2026-03-31T21:08:50.894Z",
+        "floors": [
+          1,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "crate_11",
+          "crate_0",
+          "crate_3",
+          "crate_5",
+          "crate_8",
+          "crate_7"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "stairs",
+        "category": "interactive",
+        "displayName": "stairs",
+        "type": "stairs",
+        "sightings": 517,
+        "firstSeenAt": "2026-03-31T19:54:40.932Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          1,
+          2,
+          6,
+          7,
+          8,
+          9
+        ],
+        "sampleIds": [
+          "stairs_0"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "portal",
+        "category": "interactive",
+        "displayName": "portal",
+        "type": "portal",
+        "sightings": 473,
+        "firstSeenAt": "2026-03-31T19:55:40.223Z",
+        "lastSeenAt": "2026-03-31T21:02:52.105Z",
+        "floors": [
+          3,
+          5,
+          6,
+          7
+        ],
+        "sampleIds": [
+          "portal_0",
+          "portal_1"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "rock",
+        "category": "interactive",
+        "displayName": "rock",
+        "type": "rock",
+        "sightings": 458,
+        "firstSeenAt": "2026-03-31T19:53:56.895Z",
+        "lastSeenAt": "2026-03-31T21:17:41.383Z",
+        "floors": [
+          2,
+          4,
+          6,
+          7,
+          8,
+          9
+        ],
+        "sampleIds": [
+          "rock_6",
+          "rock_3",
+          "rock_1",
+          "rock_7",
+          "rock_10",
+          "rock_12"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [
+          44,
+          57
+        ],
+        "isRevealedStates": []
+      },
+      {
+        "key": "fountain",
+        "category": "interactive",
+        "displayName": "fountain",
+        "type": "fountain",
+        "sightings": 210,
+        "firstSeenAt": "2026-03-31T20:39:28.417Z",
+        "lastSeenAt": "2026-03-31T21:02:52.105Z",
+        "floors": [
+          3,
+          5,
+          6
+        ],
+        "sampleIds": [
+          "fountain_0"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "chest",
+        "category": "interactive",
+        "displayName": "chest",
+        "type": "chest",
+        "sightings": 107,
+        "firstSeenAt": "2026-03-31T19:54:22.431Z",
+        "lastSeenAt": "2026-03-31T21:06:32.559Z",
+        "floors": [
+          3,
+          6,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "chest_9",
+          "chest_3",
+          "chest_12",
+          "chest_6",
+          "chest_4",
+          "chest_5"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      }
+    ],
+    "pickups": [
+      {
+        "key": "large_energy_orb",
+        "category": "pickups",
+        "displayName": "large_energy_orb",
+        "type": "large_energy_orb",
+        "sightings": 440,
+        "firstSeenAt": "2026-03-31T19:52:54.882Z",
+        "lastSeenAt": "2026-03-31T21:09:12.729Z",
+        "floors": [
+          1,
+          2,
+          6,
+          7,
+          8,
+          9
+        ],
+        "sampleIds": [
+          "enemy_loot_enemy_5_425",
+          "enemy_loot_enemy_11_426",
+          "enemy_loot_enemy_3_432",
+          "enemy_loot_enemy_15_464",
+          "chest_loot_chest_9_1",
+          "pot_loot_pot_6"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [
+          17,
+          18,
+          19,
+          20,
+          22,
+          23
+        ],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "small_energy_orb",
+        "category": "pickups",
+        "displayName": "small_energy_orb",
+        "type": "small_energy_orb",
+        "sightings": 223,
+        "firstSeenAt": "2026-03-31T19:52:50.193Z",
+        "lastSeenAt": "2026-03-31T21:09:10.124Z",
+        "floors": [
+          1,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "enemy_loot_enemy_9_422",
+          "enemy_loot_enemy_18_423",
+          "enemy_loot_enemy_10_430",
+          "enemy_loot_enemy_7_459",
+          "enemy_loot_enemy_2_463",
+          "enemy_loot_enemy_14_467"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [
+          8,
+          9,
+          12,
+          13,
+          14,
+          16
+        ],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "treasure",
+        "category": "pickups",
+        "displayName": "treasure",
+        "type": "treasure",
+        "sightings": 141,
+        "firstSeenAt": "2026-03-31T19:53:06.902Z",
+        "lastSeenAt": "2026-03-31T21:09:14.871Z",
+        "floors": [
+          1,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [
+          "crate_loot_crate_11",
+          "enemy_loot_enemy_17_487",
+          "enemy_loot_enemy_20_523",
+          "enemy_loot_enemy_8_560",
+          "enemy_loot_enemy_4_623",
+          "enemy_loot_enemy_16_631"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [
+          20,
+          27,
+          28,
+          29,
+          34,
+          37
+        ],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      },
+      {
+        "key": "marble",
+        "category": "pickups",
+        "displayName": "marble",
+        "type": "marble",
+        "sightings": 51,
+        "firstSeenAt": "2026-03-31T19:53:51.690Z",
+        "lastSeenAt": "2026-03-31T21:08:56.165Z",
+        "floors": [
+          2,
+          3,
+          6,
+          7,
+          8,
+          9
+        ],
+        "sampleIds": [
+          "enemy_loot_enemy_4_469",
+          "enemy_loot_enemy_18_532",
+          "crate_loot_crate_1",
+          "enemy_loot_enemy_3_615",
+          "enemy_loot_enemy_12_719",
+          "enemy_loot_enemy_split_enemy_22_0_1774987083689_725"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [
+          1
+        ],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      }
+    ],
+    "traps": [
+      {
+        "key": "spike",
+        "category": "traps",
+        "displayName": "spike",
+        "type": "spike",
+        "sightings": 206,
+        "firstSeenAt": "2026-03-31T19:53:02.084Z",
+        "lastSeenAt": "2026-03-31T21:02:50.364Z",
+        "floors": [
+          2,
+          3,
+          5,
+          6,
+          9
+        ],
+        "sampleIds": [
+          "spike_0",
+          "spike_1"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [
+          4,
+          5,
+          7,
+          8,
+          11
+        ],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      }
+    ],
+    "arrowTraps": [],
+    "portals": [
+      {
+        "key": "portal",
+        "category": "portals",
+        "displayName": "portal",
+        "type": "portal",
+        "sightings": 109,
+        "firstSeenAt": "2026-03-31T19:55:52.830Z",
+        "lastSeenAt": "2026-03-31T21:01:03.088Z",
+        "floors": [
+          3,
+          5,
+          6,
+          7,
+          8
+        ],
+        "sampleIds": [],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
+      }
+    ],
+    "torches": [
+      {
+        "key": "torch",
+        "category": "torches",
+        "displayName": "torch",
+        "type": "torch",
+        "sightings": 1528,
+        "firstSeenAt": "2026-03-31T19:48:01.463Z",
+        "lastSeenAt": "2026-03-31T21:18:00.739Z",
+        "floors": [
+          1,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "sampleIds": [],
+        "sampleSpriteTypes": [],
+        "sampleValues": [],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": [
+          true
+        ]
+      }
+    ]
+  }
+}

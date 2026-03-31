@@ -10,9 +10,15 @@ import {
   moveControlOrder,
 } from "../game-map";
 import type { GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
+import { useEncounterCatalog } from "../runtime/use-encounter-catalog";
+import type { RememberedEntity } from "../runtime/map-entity-memory";
+import { useMapEntityMemory } from "../runtime/use-map-entity-memory";
+import { useMapFogMemory } from "../runtime/use-map-fog-memory";
+import { useMapSnapshotProbe } from "../runtime/use-map-snapshot-probe";
+import { appConfig } from "../../../app/config";
 
-type FogState = "hidden" | "explored" | "visible";
-type TileKind = "wall" | "room" | "corridor" | "unknown";
+type FogState = "hidden" | "explored" | "visible" | "remembered";
+type TileKind = "wall" | "room" | "corridor" | "unknown" | "void";
 type HintKind = "move" | "attack" | "break" | "blocked";
 type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arrow-trap" | "portal" | "torch";
 
@@ -28,6 +34,16 @@ interface Viewport {
   maxX: number;
   minY: number;
   maxY: number;
+}
+
+interface FocusOffset {
+  x: number;
+  y: number;
+}
+
+interface FocusOffsetState {
+  offset: FocusOffset;
+  turnKey: string;
 }
 
 interface CellHint {
@@ -65,14 +81,26 @@ function fogStateAt(gameState: GameStateSnapshot, x: number, y: number): FogStat
 }
 
 function tileKindAt(gameState: GameStateSnapshot, x: number, y: number): TileKind {
+  if (x < 0 || y < 0) return "void";
   const value = matrixAt(gameState.mapData, x, y);
+  if (value === null) return "void";
   if (value === 2) return "wall";
   if (value === 1) return "room";
   if (value === 0) return "corridor";
   return "unknown";
 }
 
-function buildViewport(gameState: GameStateSnapshot, mode: "focus" | "full"): Viewport {
+function clamp(value: number, min: number, max: number) {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function buildViewport(
+  gameState: GameStateSnapshot,
+  mode: "focus" | "full",
+  focusRadius: number,
+  focusOffset: FocusOffset,
+): Viewport {
   const mapHeight = gameState.mapData?.length ?? 0;
   const mapWidth = gameState.mapData?.[0]?.length ?? 0;
 
@@ -84,12 +112,13 @@ function buildViewport(gameState: GameStateSnapshot, mode: "focus" | "full"): Vi
     return { minX: 0, maxX: mapWidth - 1, minY: 0, maxY: mapHeight - 1 };
   }
 
-  const radius = 6;
+  const centerX = gameState.player.x + focusOffset.x;
+  const centerY = gameState.player.y + focusOffset.y;
   return {
-    minX: Math.max(0, gameState.player.x - radius),
-    maxX: Math.min(mapWidth - 1, gameState.player.x + radius),
-    minY: Math.max(0, gameState.player.y - radius),
-    maxY: Math.min(mapHeight - 1, gameState.player.y + radius),
+    minX: centerX - focusRadius,
+    maxX: centerX + focusRadius,
+    minY: centerY - focusRadius,
+    maxY: centerY + focusRadius,
   };
 }
 
@@ -154,6 +183,84 @@ function pickupToken(entity: MapEntitySnapshot) {
   if (type.includes("treasure")) return { token: "$", accent: "gold", label: "Treasure" };
   if (type.includes("marble")) return { token: "M", accent: "violet", label: "Marble" };
   return { token: "+", accent: "lime", label: entity.type };
+}
+
+function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity {
+  if (entity.kind === "interactive") {
+    const token = interactiveToken({
+      x: entity.x,
+      y: entity.y,
+      type: entity.type,
+      id: entity.id,
+      value: entity.value,
+      damage: entity.damage,
+      tileIndex: null,
+    });
+    return {
+      kind: "interactive",
+      label: token.label,
+      token: token.token,
+      accent: token.accent,
+      hpRatio: null,
+    };
+  }
+
+  if (entity.kind === "pickup") {
+    const token = pickupToken({
+      x: entity.x,
+      y: entity.y,
+      type: entity.type,
+      id: entity.id,
+      value: entity.value,
+      damage: entity.damage,
+      tileIndex: null,
+    });
+    return {
+      kind: "pickup",
+      label: token.label,
+      token: token.token,
+      accent: token.accent,
+      hpRatio: null,
+    };
+  }
+
+  if (entity.kind === "trap") {
+    return {
+      kind: "trap",
+      label: entity.type,
+      token: "^",
+      accent: "trap",
+      hpRatio: null,
+    };
+  }
+
+  if (entity.kind === "arrow-trap") {
+    return {
+      kind: "arrow-trap",
+      label: entity.type,
+      token: "^",
+      accent: "trap",
+      hpRatio: null,
+    };
+  }
+
+  if (entity.kind === "portal") {
+    return {
+      kind: "portal",
+      label: entity.type,
+      token: "O",
+      accent: "portal",
+      hpRatio: null,
+    };
+  }
+
+  return {
+    kind: "torch",
+    label: entity.type,
+    token: "*",
+    accent: "torch",
+    hpRatio: null,
+  };
 }
 
 function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): CellEntity | null {
@@ -259,11 +366,49 @@ export function MapBoardV2({
   isActionLocked = false,
 }: MapBoardV2Props) {
   const [viewMode, setViewMode] = useState<"focus" | "full">("focus");
+  const [focusRadius, setFocusRadius] = useState(6);
+  const currentTurnKey = `${gameState.runId ?? "no-run"}:${gameState.currentFloor ?? "?"}:${gameState.turnNumber ?? "?"}`;
+  const [focusOffsetState, setFocusOffsetState] = useState<FocusOffsetState>({
+    offset: { x: 0, y: 0 },
+    turnKey: currentTurnKey,
+  });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const isEncounterCatalogEnabled = appConfig.features.encounterCatalog;
+  const isMapFogMemoryEnabled = appConfig.features.mapFogMemory;
+  const isMapSnapshotProbeEnabled = appConfig.features.mapSnapshotProbe;
+  const encounterCatalog = useEncounterCatalog(gameState, isEncounterCatalogEnabled);
+  const entityMemory = useMapEntityMemory(gameState, isMapFogMemoryEnabled);
+  const fogMemory = useMapFogMemory(gameState, isMapFogMemoryEnabled);
+  const mapSnapshotProbe = useMapSnapshotProbe(gameState, isMapSnapshotProbeEnabled);
 
-  const viewport = useMemo(() => buildViewport(gameState, viewMode), [gameState, viewMode]);
+  const effectiveFocusOffset = useMemo(
+    () => (focusOffsetState.turnKey === currentTurnKey ? focusOffsetState.offset : { x: 0, y: 0 }),
+    [currentTurnKey, focusOffsetState.offset, focusOffsetState.turnKey],
+  );
+  const viewport = useMemo(
+    () => buildViewport(gameState, viewMode, focusRadius, effectiveFocusOffset),
+    [effectiveFocusOffset, focusRadius, gameState, viewMode],
+  );
   const hintsByKey = useMemo(() => buildHints(gameState), [gameState]);
   const enemyLookup = useMemo(() => toLookup(gameState.enemies), [gameState.enemies]);
+  const focusWindowSize = focusRadius * 2 + 1;
+
+  const panFocus = (deltaX: number, deltaY: number) => {
+    setFocusOffsetState((current) => ({
+      turnKey: currentTurnKey,
+      offset: {
+        x: (current.turnKey === currentTurnKey ? current.offset.x : 0) + deltaX,
+        y: (current.turnKey === currentTurnKey ? current.offset.y : 0) + deltaY,
+      },
+    }));
+  };
+
+  const resetFocusOffset = () => {
+    setFocusOffsetState({
+      offset: { x: 0, y: 0 },
+      turnKey: currentTurnKey,
+    });
+  };
 
   const xValues = useMemo(() => {
     if (viewport.maxX < viewport.minX) return [];
@@ -286,13 +431,56 @@ export function MapBoardV2({
   return (
     <div className="map2-shell">
       <div className="map2-controls">
-        <div className="map2-segmented">
-          <button type="button" onClick={() => setViewMode("focus")} disabled={viewMode === "focus"}>
-            Focus
-          </button>
-          <button type="button" onClick={() => setViewMode("full")} disabled={viewMode === "full"}>
-            Full
-          </button>
+        <div className="map2-control-stack">
+          <div className="map2-segmented">
+            <button type="button" onClick={() => setViewMode("focus")} disabled={viewMode === "focus"}>
+              Focus
+            </button>
+            <button type="button" onClick={() => setViewMode("full")} disabled={viewMode === "full"}>
+              Full
+            </button>
+          </div>
+
+          {viewMode === "focus" ? (
+            <>
+              <div className="map2-toolbar">
+                <button type="button" onClick={() => setFocusRadius((current) => clamp(current - 1, 3, 16))} title="Zoom in">
+                  -
+                </button>
+                <button type="button" className="map2-toolbar-value" disabled title="Focus window">
+                  {focusWindowSize}x{focusWindowSize}
+                </button>
+                <button type="button" onClick={() => setFocusRadius((current) => clamp(current + 1, 3, 16))} title="Zoom out">
+                  +
+                </button>
+                <button type="button" onClick={resetFocusOffset} title="Center on player">
+                  Reset
+                </button>
+              </div>
+
+              <div className="map2-dpad">
+                <button type="button" className="map2-dpad-spacer" disabled aria-hidden="true" />
+                <button type="button" onClick={() => panFocus(0, -2)} title="Pan up">
+                  Up
+                </button>
+                <button type="button" className="map2-dpad-spacer" disabled aria-hidden="true" />
+                <button type="button" onClick={() => panFocus(-2, 0)} title="Pan left">
+                  Left
+                </button>
+                <button type="button" onClick={resetFocusOffset} title="Reset focus center">
+                  Home
+                </button>
+                <button type="button" onClick={() => panFocus(2, 0)} title="Pan right">
+                  Right
+                </button>
+                <button type="button" className="map2-dpad-spacer" disabled aria-hidden="true" />
+                <button type="button" onClick={() => panFocus(0, 2)} title="Pan down">
+                  Down
+                </button>
+                <button type="button" className="map2-dpad-spacer" disabled aria-hidden="true" />
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -302,9 +490,14 @@ export function MapBoardV2({
             {yValues.flatMap((y) =>
               xValues.map((x) => {
                 const key = keyOf(x, y);
-                const fog = fogStateAt(gameState, x, y);
+                const currentFog = fogStateAt(gameState, x, y);
+                const isRemembered = currentFog !== "visible" && fogMemory.rememberedCoordinates.has(key);
+                const fog = isRemembered ? "remembered" : currentFog;
                 const tile = tileKindAt(gameState, x, y);
-                const entity = resolveEntity(gameState, x, y);
+                const currentEntity = resolveEntity(gameState, x, y);
+                const rememberedEntity = entityMemory.rememberedEntities.get(key);
+                const entity =
+                  currentEntity ?? (rememberedEntity && currentFog !== "visible" ? rememberedEntityToCellEntity(rememberedEntity) : null);
                 const hint = hintsByKey.get(key) ?? null;
                 const isSelected = key === activeSelectedKey;
                 const isPlayerTile = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
@@ -343,12 +536,12 @@ export function MapBoardV2({
                   >
                     <span className="map2-cell-base" />
                     {fog !== "hidden" ? <span className="map2-cell-pattern" /> : null}
-                    {entity ? (
+                    {entity && fog !== "hidden" ? (
                       <span className="map2-token">
                         <span className="map2-token-core">{entity.token}</span>
                       </span>
                     ) : null}
-                    {entity && entity.hpRatio !== null ? (
+                    {entity && fog !== "hidden" && entity.hpRatio !== null ? (
                       <span className="map2-health">
                         <span
                           className="map2-health-fill"
@@ -364,6 +557,25 @@ export function MapBoardV2({
         </div>
 
         <aside className="map2-sidebar">
+          {viewMode === "focus" ? (
+            <div className="map2-card">
+              <p className="panel-eyebrow">Focus</p>
+              <div className="map2-kv">
+                <span>Window</span>
+                <strong>
+                  {focusWindowSize}x{focusWindowSize}
+                </strong>
+              </div>
+              <div className="map2-kv">
+                <span>Offset</span>
+                <strong>
+                  {effectiveFocusOffset.x}, {effectiveFocusOffset.y}
+                </strong>
+              </div>
+              <p className="map2-card-note">Zoom widens the focus window. Pan buttons only offset the current turn view; after a move, focus snaps back on the player.</p>
+            </div>
+          ) : null}
+
           <div className="map2-card">
             <p className="panel-eyebrow">Player</p>
             <div className="map2-kv">
@@ -403,6 +615,188 @@ export function MapBoardV2({
               </strong>
             </div>
           </div>
+
+          {isMapFogMemoryEnabled ? (
+            <div className="map2-card">
+              <div className="map2-card-header">
+                <div>
+                  <p className="panel-eyebrow">Memory</p>
+                  <h3>Fog memory</h3>
+                </div>
+                <span className="map2-verdict-pill map2-verdict-pill-likely-global">active</span>
+              </div>
+              <div className="map2-kv">
+                <span>Remembered tiles</span>
+                <strong>{fogMemory.rememberedCount}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Remembered entities</span>
+                <strong>{entityMemory.rememberedCount}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Stored floors</span>
+                <strong>{fogMemory.rememberedFloorCount}</strong>
+              </div>
+              <p className="map2-card-note">
+                Terrain and static entities you saw once stay readable locally, until the server later confirms they are gone.
+              </p>
+              <div className="panel-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fogMemory.resetCurrentFloor();
+                    entityMemory.resetCurrentFloor();
+                  }}
+                >
+                  Reset floor memory
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    fogMemory.resetAll();
+                    entityMemory.resetAll();
+                  }}
+                >
+                  Reset all memory
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {isEncounterCatalogEnabled ? (
+            <div className="map2-card">
+              <div className="map2-card-header">
+                <div>
+                  <p className="panel-eyebrow">Catalog</p>
+                  <h3>Encountered entities</h3>
+                </div>
+                <span className={`map2-sync-pill map2-sync-pill-${encounterCatalog.syncState}`}>{encounterCatalog.syncState}</span>
+              </div>
+              <div className="map2-kv">
+                <span>Variants</span>
+                <strong>{encounterCatalog.summary.totalVariants}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Sightings</span>
+                <strong>{encounterCatalog.summary.totalSightings}</strong>
+              </div>
+              <p className="map2-card-note">
+                {encounterCatalog.devFilePath
+                  ? `Dev file: ${encounterCatalog.devFilePath}`
+                  : "Stored locally in the browser while you explore."}
+              </p>
+
+              <div className="map2-entity-groups">
+                {encounterCatalog.summary.groups.map((group) => (
+                  <details key={group.category} className="map2-entity-group" open={group.entries.length > 0}>
+                    <summary>
+                      {group.label} <span>{group.entries.length}</span>
+                    </summary>
+                    {group.entries.length > 0 ? (
+                      <div className="map2-entity-list">
+                        {group.entries.map((entry) => (
+                          <article key={`${group.category}:${entry.key}`} className="map2-entity-row">
+                            <div className="map2-entity-row-main">
+                              <strong>{entry.displayName}</strong>
+                              <span>{entry.sightings}x</span>
+                            </div>
+                            <p className="map2-entity-row-meta">
+                              floors {entry.floors.length > 0 ? entry.floors.join(", ") : "-"}
+                              {entry.sampleSpriteTypes.length > 0 ? ` | sprites ${entry.sampleSpriteTypes.join(", ")}` : ""}
+                              {entry.sampleValues.length > 0 ? ` | values ${entry.sampleValues.join(", ")}` : ""}
+                              {entry.sampleDamage.length > 0 ? ` | dmg ${entry.sampleDamage.join(", ")}` : ""}
+                              {entry.sampleTileIndices.length > 0 ? ` | tiles ${entry.sampleTileIndices.join(", ")}` : ""}
+                              {entry.isRevealedStates.length > 0
+                                ? ` | revealed ${entry.isRevealedStates
+                                    .map((state) => (state === null ? "unknown" : state ? "yes" : "no"))
+                                    .join(", ")}`
+                                : ""}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="map2-empty-state">None seen yet.</p>
+                    )}
+                  </details>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {isMapSnapshotProbeEnabled ? (
+            <div className="map2-card">
+              <div className="map2-card-header">
+                <div>
+                  <p className="panel-eyebrow">Probe</p>
+                  <h3>Map snapshot check</h3>
+                </div>
+                <span className={`map2-verdict-pill map2-verdict-pill-${mapSnapshotProbe.probeState.verdict}`}>
+                  {mapSnapshotProbe.probeState.verdict}
+                </span>
+              </div>
+              <div className="map2-kv">
+                <span>Snapshots</span>
+                <strong>{mapSnapshotProbe.probeState.summary.snapshots}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Tracked tiles</span>
+                <strong>{mapSnapshotProbe.probeState.summary.trackedTiles}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Stable matches</span>
+                <strong>{mapSnapshotProbe.probeState.summary.stableMatches}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Tile conflicts</span>
+                <strong>{mapSnapshotProbe.probeState.summary.tileConflicts}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Dim changes / OOB</span>
+                <strong>
+                  {mapSnapshotProbe.probeState.summary.dimensionChangesWithinFloor} / {mapSnapshotProbe.probeState.summary.playerOutOfBounds}
+                </strong>
+              </div>
+              <div className="panel-actions">
+                <button type="button" onClick={mapSnapshotProbe.reset}>
+                  Reset probe
+                </button>
+              </div>
+              <div className="map2-probe-notes">
+                {mapSnapshotProbe.probeState.notes.map((note) => (
+                  <p key={note} className="map2-empty-state">
+                    {note}
+                  </p>
+                ))}
+              </div>
+              <details className="map2-entity-group">
+                <summary>Recent snapshots</summary>
+                <div className="map2-probe-list">
+                  {[...mapSnapshotProbe.probeState.observations].reverse().map((entry) => (
+                    <article key={entry.snapshotKey} className="map2-entity-row">
+                      <div className="map2-entity-row-main">
+                        <strong>
+                          f{entry.currentFloor ?? "?"} t{entry.turnNumber ?? "?"}
+                        </strong>
+                        <span>
+                          {entry.mapWidth}x{entry.mapHeight}
+                        </span>
+                      </div>
+                      <p className="map2-entity-row-meta">
+                        player {entry.playerX ?? "-"}, {entry.playerY ?? "-"} | in bounds{" "}
+                        {entry.playerInBounds === null ? "-" : entry.playerInBounds ? "yes" : "no"} | visible {entry.visibleCount} |
+                        explored {entry.exploredCount} | hidden {entry.hiddenCount}
+                      </p>
+                      <p className="map2-entity-row-meta">
+                        tracked {entry.trackedTilesAfterSnapshot} | stable {entry.stableMatchesThisSnapshot} | conflicts{" "}
+                        {entry.tileConflictsThisSnapshot} | dim changed {entry.dimensionChangedWithinFloor ? "yes" : "no"}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </details>
+            </div>
+          ) : null}
         </aside>
       </div>
     </div>
