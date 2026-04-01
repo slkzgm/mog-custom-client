@@ -106,10 +106,26 @@ export async function verifyAuthSignature(payload: SiwePayload): Promise<boolean
 }
 
 export async function fetchAuthSession(): Promise<AuthSession> {
-  const payload = await apiRequest<unknown>("auth/user", {
-    method: "GET",
-    credentials: "include",
-  });
+  let payload: unknown;
+  try {
+    payload = await apiRequest<unknown>("auth/user", {
+      method: "GET",
+      credentials: "include",
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return {
+        status: "anonymous",
+        user: null,
+        ok: false,
+        message: "No user session found.",
+        checkedAtIso: new Date().toISOString(),
+      };
+    }
+
+    throw error;
+  }
+
   const source = asRecord(payload);
   const user = toAuthUser(payload);
   const ok = Boolean(source && source.ok === true && user);

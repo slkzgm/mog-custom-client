@@ -1,6 +1,6 @@
 import type { MapEntitySnapshot } from "./game.types";
 
-export type PickupVisualCategory = "energy" | "treasure" | "marble" | "generic";
+export type PickupVisualCategory = "energy" | "treasure" | "marble" | "amber" | "generic";
 
 export interface PickupVisualDefinition {
   category: PickupVisualCategory;
@@ -32,6 +32,13 @@ const pickupVisualDefinitions: Record<PickupVisualCategory, PickupVisualDefiniti
     accent: "pickup-marble",
     badgeTone: "marble",
   },
+  amber: {
+    category: "amber",
+    label: "Amber",
+    token: "A",
+    accent: "pickup-amber",
+    badgeTone: "treasure",
+  },
   generic: {
     category: "generic",
     label: "Pickup",
@@ -48,6 +55,7 @@ function normalizePickupType(value: string) {
 export function resolvePickupVisualCategory(type: string): PickupVisualCategory {
   const normalized = normalizePickupType(type);
   if (normalized.includes("energy")) return "energy";
+  if (normalized.includes("amber")) return "amber";
   if (normalized.includes("treasure")) return "treasure";
   if (normalized.includes("marble")) return "marble";
   return "generic";

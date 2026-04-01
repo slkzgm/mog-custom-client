@@ -10,6 +10,7 @@ import {
   isAttackableEnemy,
   isMoveTargetPassable,
 } from "../game-map";
+import { getRunModeDefinition, getRunModeRewardKey, getRunModeRewardValue } from "../game-modes";
 import type { GameStateSnapshot, MoveDirection } from "../game.types";
 import { useRunMoveMutation } from "../use-run-move-mutation";
 import { useRunRerollMutation } from "../use-run-reroll-mutation";
@@ -42,6 +43,8 @@ export function useRunActionsController(
   const runTeleportMutation = useRunTeleportMutation();
   const runRerollMutation = useRunRerollMutation();
   const selectUpgradeMutation = useSelectUpgradeMutation();
+  const runType = runSession.effectiveGameState?.runType ?? "NORMAL";
+  const rewardLabel = getRunModeDefinition(runType).rewardLabel.toLowerCase();
 
   const isAnyActionPending =
     runMoveMutation.isPending || runTeleportMutation.isPending || runRerollMutation.isPending || selectUpgradeMutation.isPending;
@@ -52,8 +55,8 @@ export function useRunActionsController(
       : !runSession.canEstimateNextRerollCost
         ? "Unable to estimate next reroll cost."
         : !runSession.hasEnoughTreasureForReroll
-          ? `Insufficient treasure for reroll (need ${runSession.nextRerollCost}, have ${
-              runSession.effectiveGameState?.player?.treasure ?? 0
+          ? `Insufficient ${rewardLabel} for reroll (need ${runSession.nextRerollCost}, have ${
+              getRunModeRewardValue(runType, runSession.effectiveGameState?.player) ?? 0
             }).`
           : null;
   const isRerollDisabled =
@@ -306,10 +309,11 @@ export function useRunActionsController(
     });
 
     if (runSession.effectiveGameState && runSession.effectiveGameState.runId === runSession.moveRunId) {
+      const rewardKey = getRunModeRewardKey(runType);
       const nextPlayer = runSession.effectiveGameState.player
         ? {
             ...runSession.effectiveGameState.player,
-            treasure: result.newTreasure ?? runSession.effectiveGameState.player.treasure,
+            [rewardKey]: result.newTreasure ?? runSession.effectiveGameState.player[rewardKey],
           }
         : null;
 
@@ -324,7 +328,7 @@ export function useRunActionsController(
     }
 
     runSession.runtimeState.recordActionMetrics("reroll", startedAtMs);
-  }, [runRerollMutation, runSession]);
+  }, [runRerollMutation, runSession, runType]);
 
   const handleSelectUpgrade = useCallback(
     async (upgradeId: string) => {

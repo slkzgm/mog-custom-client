@@ -2,6 +2,7 @@ import { apiRequest } from "../../lib/http/api-client";
 import { ApiError } from "../../lib/http/api-error";
 import type {
   ActiveRunSnapshot,
+  BalanceResource,
   CreateRunResult,
   EnemySnapshot,
   GameBuffSnapshot,
@@ -12,6 +13,7 @@ import type {
   MapEntitySnapshot,
   MoveRunParams,
   MoveRunResult,
+  RunType,
   RunRerollResult,
   RunStateSnapshot,
   SelectUpgradeParams,
@@ -149,7 +151,10 @@ function toGamePlayer(value: unknown): GamePlayerSnapshot | null {
     maxEnergy: pickFirstNumber(source, ["maxEnergy"]),
     treasure: pickFirstNumber(source, ["treasure"]),
     marbles: pickFirstNumber(source, ["marbles"]),
+    amber: pickFirstNumber(source, ["amber"]),
+    raffleTickets: pickFirstNumber(source, ["raffleTickets"]),
     hongbao: pickFirstNumber(source, ["hongbao"]),
+    abs: pickFirstNumber(source, ["abs"]),
     baseAttackPower: pickFirstNumber(source, ["baseAttackPower"]),
     attackPower: pickFirstNumber(source, ["attackPower"]),
     totalEnergySpent: pickFirstNumber(source, ["totalEnergySpent"]),
@@ -247,6 +252,18 @@ function pickArrayLength(value: unknown): number | null {
   return value.length;
 }
 
+function normalizeRunType(value: unknown): RunType | null {
+  if (value !== "NORMAL" && value !== "WORLD") return null;
+  return value;
+}
+
+function toBalanceResponse(source: Record<string, unknown> | null, resource: BalanceResource) {
+  return {
+    balance: source ? pickFirstNumber(source, ["balance"]) : null,
+    resource,
+  };
+}
+
 function toGameState(payload: unknown): GameStateSnapshot | null {
   const source = asRecord(payload);
   if (!source) return null;
@@ -254,6 +271,7 @@ function toGameState(payload: unknown): GameStateSnapshot | null {
 
   return {
     runId: pickFirstString(source, ["runId", "id"]),
+    runType: normalizeRunType(source.runType),
     userId: pickFirstString(source, ["userId"]),
     status: pickFirstString(source, ["status"]),
     keysUsed: pickFirstNumber(source, ["keysUsed", "keysAmount"]),
@@ -305,8 +323,8 @@ export async function fetchGameStatus(): Promise<GameStatus> {
   };
 }
 
-export async function fetchActiveRun(): Promise<ActiveRunSnapshot> {
-  const payload = await apiRequest<unknown>("runs/active", {
+export async function fetchActiveRun(runType: RunType = "NORMAL"): Promise<ActiveRunSnapshot> {
+  const payload = await apiRequest<unknown>(`runs/active?runType=${runType}`, {
     method: "GET",
     credentials: "include",
   });
@@ -316,6 +334,7 @@ export async function fetchActiveRun(): Promise<ActiveRunSnapshot> {
     return {
       activeRun: null,
       activeRunId: null,
+      runType,
     };
   }
 
@@ -323,28 +342,27 @@ export async function fetchActiveRun(): Promise<ActiveRunSnapshot> {
   return {
     activeRun,
     activeRunId: activeRun ? pickFirstString(activeRun, ["runId", "id"]) : null,
+    runType: normalizeRunType(source.runType) ?? normalizeRunType(activeRun?.runType) ?? runType,
   };
 }
 
-export async function fetchKeysBalance(): Promise<KeysBalance> {
-  const payload = await apiRequest<unknown>("keys/balance", {
+export async function fetchKeysBalance(resource: BalanceResource = "keys"): Promise<KeysBalance> {
+  const endpoint =
+    resource === "keys"
+      ? "keys/balance"
+      : resource === "world-keys"
+        ? "items/world-keys"
+        : "items/amber";
+  const payload = await apiRequest<unknown>(endpoint, {
     method: "GET",
     credentials: "include",
   });
   const source = asRecord(payload);
 
-  if (!source) {
-    return {
-      balance: null,
-    };
-  }
-
-  return {
-    balance: pickFirstNumber(source, ["balance"]),
-  };
+  return toBalanceResponse(source, resource);
 }
 
-export async function createRun(keysAmount: number): Promise<CreateRunResult> {
+export async function createRun(keysAmount: number, runType: RunType = "NORMAL"): Promise<CreateRunResult> {
   let payload: unknown;
   try {
     payload = await apiRequest<unknown>("runs/create", {
@@ -352,17 +370,19 @@ export async function createRun(keysAmount: number): Promise<CreateRunResult> {
       credentials: "include",
       body: {
         keysAmount,
+        runType,
       },
     });
   } catch (error) {
     // Observed backend quirk: create can occasionally return INTERNAL_ERROR even when
     // a run becomes available right after. Try to recover from active run state.
     if (error instanceof ApiError && error.code === "INTERNAL_ERROR") {
-      const activeRun = await fetchActiveRun().catch(() => null);
+      const activeRun = await fetchActiveRun(runType).catch(() => null);
       if (activeRun?.activeRunId) {
         const runState = await fetchRunState(activeRun.activeRunId).catch(() => null);
         return {
           runId: activeRun.activeRunId,
+          runType,
           keysUsed: runState?.gameState?.keysUsed ?? null,
           gameState: runState?.gameState ?? null,
         };
@@ -376,6 +396,7 @@ export async function createRun(keysAmount: number): Promise<CreateRunResult> {
   if (!source) {
     return {
       runId: null,
+      runType,
       keysUsed: null,
       gameState: null,
     };
@@ -390,6 +411,7 @@ export async function createRun(keysAmount: number): Promise<CreateRunResult> {
       (nestedRun ? pickFirstString(nestedRun, ["runId", "id"]) : null) ??
       gameState?.runId ??
       null,
+    runType: normalizeRunType(source.runType) ?? normalizeRunType(nestedRun?.runType) ?? gameState?.runType ?? runType,
     keysUsed:
       pickFirstNumber(source, ["keysUsed"]) ??
       (nestedRun ? pickFirstNumber(nestedRun, ["keysUsed", "keysAmount"]) : null) ??

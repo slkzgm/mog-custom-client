@@ -1,14 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import type { BalanceResource } from "./game.types";
+import { itemBalanceQueryKey, useItemBalanceQuery } from "./use-item-balance-query";
 
-import { fetchKeysBalance } from "./game.api";
+export function keysBalanceQueryKey(resource: BalanceResource = "keys") {
+  return itemBalanceQueryKey(resource);
+}
 
-export const keysBalanceQueryKey = ["game", "keys-balance"] as const;
-
-export function useKeysBalanceQuery() {
-  return useQuery({
-    queryKey: keysBalanceQueryKey,
-    queryFn: fetchKeysBalance,
-    staleTime: 5_000,
-    refetchOnWindowFocus: false,
-  });
+export function useKeysBalanceQuery(resource: BalanceResource = "keys", enabled = true) {
+  return useItemBalanceQuery(resource, enabled);
 }

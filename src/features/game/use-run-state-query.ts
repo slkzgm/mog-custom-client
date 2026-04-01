@@ -8,7 +8,7 @@ export function runStateQueryKey(runId: string) {
   return ["game", "run-state", runId] as const;
 }
 
-export function useRunStateQuery(runId: string | null | undefined) {
+export function useRunStateQuery(runId: string | null | undefined, enabled = true) {
   return useQuery({
     queryKey: runId ? runStateQueryKey(runId) : disabledRunStateQueryKey,
     queryFn: async () => {
@@ -18,7 +18,7 @@ export function useRunStateQuery(runId: string | null | undefined) {
 
       return fetchRunState(runId);
     },
-    enabled: Boolean(runId),
+    enabled: enabled && Boolean(runId),
     staleTime: 5_000,
     refetchOnWindowFocus: false,
   });

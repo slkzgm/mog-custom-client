@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { moveRun } from "./game.api";
 import type { MoveRunParams } from "./game.types";
-import { activeRunQueryKey } from "./use-active-run-query";
 import { runStateQueryKey } from "./use-run-state-query";
 import type { RunStateSnapshot } from "./game.types";
 
@@ -21,7 +20,7 @@ export function useRunMoveMutation() {
 
       // Only refetch active run metadata when a run can terminate.
       if (result.isGameOver) {
-        await queryClient.invalidateQueries({ queryKey: activeRunQueryKey });
+        await queryClient.invalidateQueries({ queryKey: ["game", "active-run"] });
       }
     },
   });

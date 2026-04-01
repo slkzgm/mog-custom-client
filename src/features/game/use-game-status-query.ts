@@ -4,10 +4,11 @@ import { fetchGameStatus } from "./game.api";
 
 export const gameStatusQueryKey = ["game", "status"] as const;
 
-export function useGameStatusQuery() {
+export function useGameStatusQuery(enabled = true) {
   return useQuery({
     queryKey: gameStatusQueryKey,
     queryFn: fetchGameStatus,
+    enabled,
     staleTime: 5_000,
     refetchOnWindowFocus: false,
   });

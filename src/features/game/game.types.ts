@@ -1,3 +1,6 @@
+export type RunType = "NORMAL" | "WORLD";
+export type BalanceResource = "keys" | "world-keys" | "amber";
+
 export interface GameStatus {
   paused: boolean;
   timestamp: number | null;
@@ -6,10 +9,12 @@ export interface GameStatus {
 export interface ActiveRunSnapshot {
   activeRun: Record<string, unknown> | null;
   activeRunId: string | null;
+  runType: RunType | null;
 }
 
 export interface KeysBalance {
   balance: number | null;
+  resource: BalanceResource;
 }
 
 export type MoveDirection = "up" | "down" | "left" | "right";
@@ -22,7 +27,10 @@ export interface GamePlayerSnapshot {
   maxEnergy: number | null;
   treasure: number | null;
   marbles: number | null;
+  amber: number | null;
+  raffleTickets: number | null;
   hongbao: number | null;
+  abs: number | null;
   baseAttackPower: number | null;
   attackPower: number | null;
   totalEnergySpent: number | null;
@@ -67,6 +75,7 @@ export interface TorchSnapshot extends MapEntitySnapshot {
 
 export interface GameStateSnapshot {
   runId: string | null;
+  runType: RunType | null;
   userId: string | null;
   status: string | null;
   keysUsed: number | null;
@@ -97,6 +106,7 @@ export interface GameStateSnapshot {
 
 export interface CreateRunResult {
   runId: string | null;
+  runType: RunType | null;
   keysUsed: number | null;
   gameState: GameStateSnapshot | null;
 }

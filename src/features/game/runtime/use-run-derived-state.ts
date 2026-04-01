@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { buildAsciiMap, isAttackableEnemy } from "../game-map";
+import { getRunModeRewardValue } from "../game-modes";
 import {
   countFogMask,
   countTileKinds,
@@ -93,7 +94,7 @@ export function useRunDerivedState(gameState: GameStateSnapshot | null) {
       ? gameState.nextRerollCost
       : estimateNextRerollCost(gameState?.currentRerollCount);
   const canEstimateNextRerollCost = typeof nextRerollCost === "number";
-  const playerTreasure = player?.treasure ?? null;
+  const playerTreasure = getRunModeRewardValue(gameState?.runType ?? "NORMAL", player);
   const hasEnoughTreasureForReroll =
     canEstimateNextRerollCost && typeof playerTreasure === "number" && playerTreasure >= nextRerollCost;
   const skDefeatedText =

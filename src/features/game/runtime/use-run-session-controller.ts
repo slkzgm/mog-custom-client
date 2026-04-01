@@ -2,33 +2,43 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useActiveRunQuery } from "../use-active-run-query";
 import { useCreateRunMutation } from "../use-create-run-mutation";
+import { getRunModeDefinition } from "../game-modes";
 import { useGameStatusQuery } from "../use-game-status-query";
 import { useKeysBalanceQuery } from "../use-keys-balance-query";
 import { useRunStateQuery } from "../use-run-state-query";
+import type { RunType } from "../game.types";
 import { parseIntegerInput, validateStartRunInput } from "./game-runtime.utils";
 import { useRunDerivedState } from "./use-run-derived-state";
 import { useRunRuntimeState } from "./use-run-runtime-state";
 
-export function useRunSessionController() {
-  const statusQuery = useGameStatusQuery();
-  const activeRunQuery = useActiveRunQuery();
-  const balanceQuery = useKeysBalanceQuery();
+interface UseRunSessionControllerOptions {
+  enabled?: boolean;
+  runType?: RunType;
+}
+
+export function useRunSessionController(options: UseRunSessionControllerOptions = {}) {
+  const enabled = options.enabled ?? true;
+  const runType = options.runType ?? "NORMAL";
+  const mode = getRunModeDefinition(runType);
+  const statusQuery = useGameStatusQuery(enabled);
+  const activeRunQuery = useActiveRunQuery(runType, enabled);
+  const balanceQuery = useKeysBalanceQuery(mode.keyResource, enabled);
   const createRunMutation = useCreateRunMutation();
   const runtimeState = useRunRuntimeState();
   const [keysAmountInput, setKeysAmountInput] = useState("1");
 
   const activeRun = activeRunQuery.data?.activeRun ?? null;
   const activeRunId = activeRunQuery.data?.activeRunId ?? null;
-  const runStateQuery = useRunStateQuery(activeRunId);
+  const runStateQuery = useRunStateQuery(activeRunId, enabled);
   const hasActiveRun = Boolean(activeRunId);
   const parsedKeysAmount = parseIntegerInput(keysAmountInput);
   const balance = balanceQuery.data?.balance;
   const startRunValidationError = validateStartRunInput({
     parsedKeysAmount,
     balance,
-    hasActiveRun,
+    hasActiveRun: enabled && hasActiveRun,
   });
-  const canStartRun = !startRunValidationError && !createRunMutation.isPending;
+  const canStartRun = enabled && !startRunValidationError && !createRunMutation.isPending;
 
   const resumedGameState =
     runStateQuery.data?.gameState && runStateQuery.data.gameState.runId === activeRunId
@@ -52,33 +62,36 @@ export function useRunSessionController() {
       balanceQuery.refetch(),
     ];
 
-    if (activeRunId) {
+    if (enabled && activeRunId) {
       tasks.push(runStateQuery.refetch());
     }
 
     await Promise.all(tasks);
-  }, [activeRunId, activeRunQuery, balanceQuery, runStateQuery, statusQuery]);
+  }, [activeRunId, activeRunQuery, balanceQuery, enabled, runStateQuery, statusQuery]);
 
   const handleStartRun = useCallback(async () => {
-    if (!canStartRun || parsedKeysAmount === null) return;
+    if (!enabled || !canStartRun || parsedKeysAmount === null) return;
 
     const result = await createRunMutation.mutateAsync({
       keysAmount: parsedKeysAmount,
+      runType,
     });
     runtimeState.replaceLocalGameState(result.gameState);
     runtimeState.clearLastMoveEvents();
-  }, [canStartRun, createRunMutation, parsedKeysAmount, runtimeState]);
+  }, [canStartRun, createRunMutation, enabled, parsedKeysAmount, runType, runtimeState]);
 
   const handleResumeActiveRun = useCallback(async () => {
-    if (!activeRunId) return;
+    if (!enabled || !activeRunId) return;
 
     const result = await runStateQuery.refetch();
     runtimeState.replaceLocalGameState(result.data?.gameState ?? null);
     runtimeState.clearLastMoveEvents();
-  }, [activeRunId, runStateQuery, runtimeState]);
+  }, [activeRunId, enabled, runStateQuery, runtimeState]);
 
   const recoverRunStateFromServer = useCallback(
     async (runId: string) => {
+      if (!enabled) return;
+
       const result = await runStateQuery.refetch();
       if (result.data?.gameState && result.data.gameState.runId === runId) {
         runtimeState.replaceLocalGameState(result.data.gameState);
@@ -94,7 +107,7 @@ export function useRunSessionController() {
         }
       }
     },
-    [activeRunQuery, runStateQuery, runtimeState],
+    [activeRunQuery, enabled, runStateQuery, runtimeState],
   );
 
   const isRefreshDisabled = useMemo(
@@ -112,6 +125,8 @@ export function useRunSessionController() {
     activeRunQuery,
     balanceQuery,
     createRunMutation,
+    runType,
+    mode,
     runStateQuery,
     runtimeState,
     activeRun,

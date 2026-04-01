@@ -1,8 +1,17 @@
+import type { RunType } from "../game.types";
 import { useRunActionsController } from "./use-run-actions-controller";
 import { useRunSessionController } from "./use-run-session-controller";
 
-export function useSharedGameplayModel() {
-  const runSession = useRunSessionController();
+interface UseSharedGameplayModelOptions {
+  enabled?: boolean;
+  runType?: RunType;
+}
+
+export function useSharedGameplayModel(options: UseSharedGameplayModelOptions = {}) {
+  const runSession = useRunSessionController({
+    enabled: options.enabled,
+    runType: options.runType,
+  });
   const runActions = useRunActionsController({
     activeRunId: runSession.activeRunId,
     effectiveGameState: runSession.effectiveGameState,

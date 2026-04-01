@@ -1,13 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchActiveRun } from "./game.api";
+import type { RunType } from "./game.types";
 
-export const activeRunQueryKey = ["game", "active-run"] as const;
+export function activeRunQueryKey(runType: RunType = "NORMAL") {
+  return ["game", "active-run", runType] as const;
+}
 
-export function useActiveRunQuery() {
+export function useActiveRunQuery(runType: RunType = "NORMAL", enabled = true) {
   return useQuery({
-    queryKey: activeRunQueryKey,
-    queryFn: fetchActiveRun,
+    queryKey: activeRunQueryKey(runType),
+    queryFn: () => fetchActiveRun(runType),
+    enabled,
     staleTime: 5_000,
     refetchOnWindowFocus: false,
   });

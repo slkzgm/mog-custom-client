@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { selectUpgrade } from "./game.api";
 import type { RunStateSnapshot, SelectUpgradeParams } from "./game.types";
-import { activeRunQueryKey } from "./use-active-run-query";
 import { runStateQueryKey } from "./use-run-state-query";
 
 export function useSelectUpgradeMutation() {
@@ -19,7 +18,7 @@ export function useSelectUpgradeMutation() {
       }
 
       if (result.isGameOver) {
-        await queryClient.invalidateQueries({ queryKey: activeRunQueryKey });
+        await queryClient.invalidateQueries({ queryKey: ["game", "active-run"] });
       }
     },
   });

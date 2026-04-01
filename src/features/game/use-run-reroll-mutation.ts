@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { rerollRun } from "./game.api";
+import { getRunModeRewardKey } from "./game-modes";
 import type { RunStateSnapshot } from "./game.types";
 import { runStateQueryKey } from "./use-run-state-query";
 
@@ -22,7 +23,9 @@ export function useRunRerollMutation() {
         const nextPlayer = current.gameState.player
           ? {
               ...current.gameState.player,
-              treasure: result.newTreasure ?? current.gameState.player.treasure,
+              [getRunModeRewardKey(current.gameState.runType ?? "NORMAL")]:
+                result.newTreasure ??
+                current.gameState.player[getRunModeRewardKey(current.gameState.runType ?? "NORMAL")],
             }
           : null;
 
