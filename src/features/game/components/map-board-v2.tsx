@@ -9,7 +9,8 @@ import {
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
-import { resolveInteractiveVisual } from "../map-interactive-visuals";
+import { interactiveValueText, resolveInteractiveVisual } from "../map-interactive-visuals";
+import { pickupValueText, resolvePickupVisual } from "../map-pickup-visuals";
 import type { GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 import { useEncounterCatalog } from "../runtime/use-encounter-catalog";
 import type { RememberedEntity } from "../runtime/map-entity-memory";
@@ -62,6 +63,8 @@ interface CellEntity {
   hpRatio: number | null;
   showToken: boolean;
   useWallSurface: boolean;
+  valueText: string | null;
+  intentDirection: MoveDirection | null;
 }
 
 function keyOf(x: number, y: number) {
@@ -97,6 +100,124 @@ function tileKindAt(gameState: GameStateSnapshot, x: number, y: number): TileKin
 function clamp(value: number, min: number, max: number) {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
+}
+
+function isSkullEnemySprite(spriteType: string | null) {
+  if (!spriteType) return false;
+  const normalized = spriteType.trim().toLowerCase();
+  return normalized.includes("skeleton") || normalized.includes("skull");
+}
+
+function isGhostEnemyLabels(type: string, spriteType: string | null) {
+  const normalizedType = type.trim().toLowerCase();
+  const normalizedSprite = spriteType?.trim().toLowerCase() ?? "";
+  return normalizedType.includes("ghost") || normalizedSprite.includes("ghost");
+}
+
+function intentArrow(direction: MoveDirection) {
+  if (direction === "up") return "↑";
+  if (direction === "down") return "↓";
+  if (direction === "left") return "←";
+  return "→";
+}
+
+function isEnemyAdjacentToPlayer(gameState: GameStateSnapshot, enemyX: number, enemyY: number) {
+  const player = gameState.player;
+  if (!player) return false;
+  return Math.abs(enemyX - player.x) + Math.abs(enemyY - player.y) === 1;
+}
+
+function normalizePatternDirection(value: string | null) {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "horizontal" || normalized === "vertical") return normalized;
+  return null;
+}
+
+function patternDirectionDelta(direction: "horizontal" | "vertical", isPositive: boolean) {
+  if (direction === "horizontal") {
+    return { dx: isPositive ? 1 : -1, dy: 0 };
+  }
+
+  return { dx: 0, dy: isPositive ? 1 : -1 };
+}
+
+function canEnemyTraverseTile(gameState: GameStateSnapshot, x: number, y: number, canPassThroughWalls: boolean | null) {
+  const tile = tileKindAt(gameState, x, y);
+  if (tile === "void" || tile === "unknown") return false;
+  if (tile === "wall") return canPassThroughWalls === true;
+  return true;
+}
+
+function predictEnemyNextMoveDirection(
+  gameState: GameStateSnapshot,
+  enemy: {
+    x: number;
+    y: number;
+    type: string;
+    moveCooldown: number | null;
+    patternDirection: string | null;
+    patternMovingPositive: boolean | null;
+    canPassThroughWalls: boolean | null;
+  },
+): MoveDirection | null {
+  if (isEnemyAdjacentToPlayer(gameState, enemy.x, enemy.y)) return null;
+  if (typeof enemy.moveCooldown === "number" && enemy.moveCooldown > 0) return null;
+  if (enemy.type !== "pattern") return null;
+
+  const direction = normalizePatternDirection(enemy.patternDirection);
+  if (!direction || enemy.patternMovingPositive === null) return null;
+
+  const delta = patternDirectionDelta(direction, enemy.patternMovingPositive);
+  const nextX = enemy.x + delta.dx;
+  const nextY = enemy.y + delta.dy;
+  if (!canEnemyTraverseTile(gameState, nextX, nextY, enemy.canPassThroughWalls)) return null;
+
+  if (delta.dx === 1) return "right";
+  if (delta.dx === -1) return "left";
+  if (delta.dy === 1) return "down";
+  return "up";
+}
+
+function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: {
+  x: number;
+  y: number;
+  type: string;
+  damage: number | null;
+  moveCooldown: number | null;
+  patternDirection: string | null;
+  patternMovingPositive: boolean | null;
+  canPassThroughWalls: boolean | null;
+  isChargingHeavy: boolean;
+  hasHeavyHit: boolean;
+  spriteType: string | null;
+}) {
+  if (isEnemyAdjacentToPlayer(gameState, enemy.x, enemy.y)) {
+    return "adjacent attack";
+  }
+
+  if (typeof enemy.moveCooldown === "number" && enemy.moveCooldown > 0) {
+    return `waiting (${enemy.moveCooldown})`;
+  }
+
+  if (enemy.type === "pattern") {
+    const nextMove = predictEnemyNextMoveDirection(gameState, enemy);
+    return nextMove ? `move ${nextMove}` : "blocked / flip soon";
+  }
+
+  if (enemy.type === "stationary") {
+    return enemy.isChargingHeavy ? "charged line attack soon" : "stationary";
+  }
+
+  if (isGhostEnemyLabels(enemy.type, enemy.spriteType)) {
+    return enemy.damage !== null && enemy.damage > 0 ? "danger ghost chase" : "harmless ghost chase";
+  }
+
+  if (enemy.hasHeavyHit) {
+    return "heavy move";
+  }
+
+  return "move";
 }
 
 function buildViewport(
@@ -173,11 +294,13 @@ function toLookup<T extends { x: number; y: number }>(items: T[]) {
 }
 
 function pickupToken(entity: MapEntitySnapshot) {
-  const type = entity.type.trim().toLowerCase();
-  if (type.includes("energy")) return { token: "+", accent: "lime", label: "Energy" };
-  if (type.includes("treasure")) return { token: "$", accent: "gold", label: "Treasure" };
-  if (type.includes("marble")) return { token: "M", accent: "violet", label: "Marble" };
-  return { token: "+", accent: "lime", label: entity.type };
+  const visual = resolvePickupVisual(entity);
+  return {
+    token: visual.token,
+    accent: visual.accent,
+    label: visual.label,
+    valueText: pickupValueText(entity.value),
+  };
 }
 
 function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | null {
@@ -191,19 +314,16 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: token.showToken,
       useWallSurface: token.useWallSurface,
+      valueText: interactiveValueText(entity),
+      intentDirection: null,
     };
   }
 
   if (entity.kind === "pickup") {
-    const token = pickupToken({
-      x: entity.x,
-      y: entity.y,
-      type: entity.type,
-      id: entity.id,
-      value: entity.value,
-      damage: entity.damage,
-      tileIndex: null,
-    });
+    const token = {
+      ...resolvePickupVisual(entity.type),
+      valueText: pickupValueText(entity.value),
+    };
     return {
       kind: "pickup",
       label: token.label,
@@ -212,6 +332,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: token.valueText,
+      intentDirection: null,
     };
   }
 
@@ -224,6 +346,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -236,6 +360,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -248,6 +374,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -265,6 +393,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -276,10 +406,12 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       kind: "enemy",
       label: isGhostEnemy(enemy) ? "Ghost" : enemy.type,
       token: isGhostEnemy(enemy) ? "G" : "!",
-      accent: isGhostEnemy(enemy) ? "ghost" : "enemy",
+      accent: isGhostEnemy(enemy) ? (enemy.damage !== null && enemy.damage > 0 ? "ghost-danger" : "ghost") : "enemy",
       hpRatio: ratio,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: predictEnemyNextMoveDirection(gameState, enemy),
     };
   }
 
@@ -294,6 +426,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: token.showToken,
       useWallSurface: token.useWallSurface,
+      valueText: interactiveValueText(interactive),
+      intentDirection: null,
     };
   }
 
@@ -308,6 +442,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: token.valueText,
+      intentDirection: null,
     };
   }
 
@@ -321,6 +457,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -334,6 +472,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -347,6 +487,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
+      valueText: null,
+      intentDirection: null,
     };
   }
 
@@ -419,6 +561,14 @@ export function MapBoardV2({
   const fallbackKey = gameState.player ? keyOf(gameState.player.x, gameState.player.y) : null;
   const activeSelectedKey = selectedKey ?? fallbackKey;
   const selectedEnemy = activeSelectedKey ? enemyLookup.get(activeSelectedKey) ?? null : null;
+  const selectedEnemyNextMoveDirection = useMemo(
+    () => (selectedEnemy ? predictEnemyNextMoveDirection(gameState, selectedEnemy) : null),
+    [gameState, selectedEnemy],
+  );
+  const selectedEnemyIntentText = useMemo(
+    () => (selectedEnemy ? selectedEnemyIntent(gameState, selectedEnemy) : null),
+    [gameState, selectedEnemy],
+  );
 
   if (!xValues.length || !yValues.length) {
     return <p>No map data available.</p>;
@@ -493,8 +643,12 @@ export function MapBoardV2({
                 const currentEntity = resolveEntity(gameState, x, y);
                 const rememberedEntity = entityMemory.rememberedEntities.get(key);
                 const isVisited = visitedCells.visitedCoordinates.has(key);
-                const entity =
+                const rawEntity =
                   currentEntity ?? (rememberedEntity && currentFog !== "visible" ? rememberedEntityToCellEntity(rememberedEntity) : null);
+                const entity =
+                  rawEntity && rawEntity.kind === "interactive" && rawEntity.accent === "fountain" && isVisited
+                    ? { ...rawEntity, accent: "fountain-spent", label: "Fountain (spent)" }
+                    : rawEntity;
                 const hint = hintsByKey.get(key) ?? null;
                 const isSelected = key === activeSelectedKey;
                 const isPlayerTile = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
@@ -539,6 +693,12 @@ export function MapBoardV2({
                         <span className="map2-token-core">{entity.token}</span>
                       </span>
                     ) : null}
+                    {entity?.intentDirection && fog !== "hidden" ? (
+                      <span className={`map2-intent-arrow map2-intent-arrow-${entity.intentDirection}`}>
+                        {intentArrow(entity.intentDirection)}
+                      </span>
+                    ) : null}
+                    {entity?.valueText && fog !== "hidden" ? <span className="map2-token-badge">{entity.valueText}</span> : null}
                     {entity && fog !== "hidden" && entity.hpRatio !== null ? (
                       <span className="map2-health">
                         <span
@@ -643,6 +803,70 @@ export function MapBoardV2({
                   : selectedEnemy?.hp ?? "-"}
               </strong>
             </div>
+            {selectedEnemy ? (
+              <>
+                <div className="map2-kv">
+                  <span>Sprite</span>
+                  <strong>{selectedEnemy.spriteType ?? "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Behavior</span>
+                  <strong>{selectedEnemy.type}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Damage</span>
+                  <strong>{selectedEnemy.damage ?? "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Cooldown</span>
+                  <strong>{selectedEnemy.moveCooldown ?? "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Pattern dir</span>
+                  <strong>{selectedEnemy.patternDirection ?? "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Pattern sign</span>
+                  <strong>
+                    {selectedEnemy.patternMovingPositive === null
+                      ? "-"
+                      : selectedEnemy.patternMovingPositive
+                        ? "positive"
+                        : "negative"}
+                  </strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Ghost / Skull</span>
+                  <strong>
+                    {isGhostEnemy(selectedEnemy) ? "ghost" : "normal"} / {isSkullEnemySprite(selectedEnemy.spriteType) ? "skull" : "non-skull"}
+                  </strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Intent</span>
+                  <strong>{selectedEnemyIntentText ?? "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Next move</span>
+                  <strong>{selectedEnemyNextMoveDirection ? intentArrow(selectedEnemyNextMoveDirection) : "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Pass walls</span>
+                  <strong>
+                    {selectedEnemy.canPassThroughWalls === null ? "-" : selectedEnemy.canPassThroughWalls ? "yes" : "no"}
+                  </strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Heavy / Charging</span>
+                  <strong>
+                    {selectedEnemy.hasHeavyHit ? "yes" : "no"} / {selectedEnemy.isChargingHeavy ? "yes" : "no"}
+                  </strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Attackable</span>
+                  <strong>{isAttackableEnemy(selectedEnemy) ? "yes" : "no"}</strong>
+                </div>
+              </>
+            ) : null}
           </div>
 
           {isMapFogMemoryEnabled ? (

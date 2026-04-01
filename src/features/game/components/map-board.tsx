@@ -10,6 +10,7 @@ import {
   moveControlOrder,
 } from "../game-map";
 import { interactiveSymbol } from "../map-interactive-visuals";
+import { resolvePickupVisual } from "../map-pickup-visuals";
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 
 type FogState = "hidden" | "explored" | "visible";
@@ -127,13 +128,11 @@ function shortTypeCode(type: string | null): string {
 }
 
 function pickupBadge(entity: MapEntitySnapshot): string {
+  const visual = resolvePickupVisual(entity);
   const value = entity.value;
-  const type = entity.type.trim().toLowerCase();
-  if (type.includes("energy")) return `e+${value ?? "?"}`;
-  if (type.includes("treasure")) return `t+${value ?? "?"}`;
-  if (type.includes("marble")) return `m+${value ?? "?"}`;
-  if (type.includes("hongbao")) return `h+${value ?? "?"}`;
-  return value !== null ? `${shortTypeCode(type)}+${value}` : shortTypeCode(type);
+  const prefix =
+    visual.category === "energy" ? "e" : visual.category === "treasure" ? "t" : visual.category === "marble" ? "m" : shortTypeCode(entity.type);
+  return value !== null ? `${prefix}+${value}` : prefix;
 }
 
 function clampRatio(value: number | null, maxValue: number | null): number | null {
@@ -324,7 +323,7 @@ function resolveEntityData(params: {
     const valueBadge = pickupBadge(pickup);
     const idBadge = shortIdBadge(pickup.id);
     return {
-      symbol: "$",
+      symbol: resolvePickupVisual(pickup).token,
       entityKind: "pickup",
       entityType: pickup.type,
       entityId: pickup.id,

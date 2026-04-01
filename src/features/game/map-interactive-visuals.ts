@@ -81,6 +81,13 @@ function normalizeInteractiveType(value: string) {
   return value.trim().toLowerCase();
 }
 
+function isSpentFountain(entity: MapEntitySnapshot) {
+  const normalized = normalizeInteractiveType(entity.type);
+  if (!normalized.includes("fountain")) return false;
+  if (typeof entity.value === "number" && entity.value <= 0) return true;
+  return normalized.includes("used") || normalized.includes("spent") || normalized.includes("empty") || normalized.includes("depleted");
+}
+
 export function resolveInteractiveVisualCategory(type: string): InteractiveVisualCategory {
   const normalized = normalizeInteractiveType(type);
   if (normalized === "stairs") return "stairs";
@@ -93,10 +100,23 @@ export function resolveInteractiveVisualCategory(type: string): InteractiveVisua
 }
 
 export function resolveInteractiveVisual(typeOrEntity: string | MapEntitySnapshot): InteractiveVisualDefinition {
+  if (typeof typeOrEntity !== "string" && isSpentFountain(typeOrEntity)) {
+    return {
+      ...interactiveVisualDefinitions.fountain,
+      accent: "fountain-spent",
+    };
+  }
+
   const type = typeof typeOrEntity === "string" ? typeOrEntity : typeOrEntity.type;
   return interactiveVisualDefinitions[resolveInteractiveVisualCategory(type)];
 }
 
 export function interactiveSymbol(typeOrEntity: string | MapEntitySnapshot): string {
   return resolveInteractiveVisual(typeOrEntity).token;
+}
+
+export function interactiveValueText(typeOrEntity: string | Pick<MapEntitySnapshot, "value">): string | null {
+  if (typeof typeOrEntity === "string") return null;
+  if (typeof typeOrEntity.value !== "number" || !Number.isFinite(typeOrEntity.value)) return null;
+  return String(Math.max(0, Math.round(typeOrEntity.value)));
 }

@@ -23,12 +23,17 @@ export function useRunDerivedState(gameState: GameStateSnapshot | null) {
       const hp =
         enemy.hp !== null && enemy.maxHp !== null ? `${enemy.hp}/${enemy.maxHp}` : enemy.hp ?? enemy.maxHp ?? "-";
       const attackable = isAttackableEnemy(enemy) ? "yes" : "no";
+      const patternDirection = enemy.patternDirection ?? "-";
+      const patternMovingPositive =
+        enemy.patternMovingPositive === null ? "-" : enemy.patternMovingPositive ? "positive" : "negative";
+      const passThroughWalls =
+        enemy.canPassThroughWalls === null ? "-" : enemy.canPassThroughWalls ? "yes" : "no";
 
       return `${index + 1}. ${enemy.id ?? "enemy"} @(${enemy.x},${enemy.y}) dist=${distance} hp=${hp} dmg=${
         enemy.damage ?? "-"
       } type=${enemy.type} sprite=${enemy.spriteType ?? "-"} cooldown=${enemy.moveCooldown ?? "-"} heavy=${
         enemy.hasHeavyHit ? "yes" : "no"
-      } charging=${enemy.isChargingHeavy ? "yes" : "no"} attackable=${attackable}`;
+      } charging=${enemy.isChargingHeavy ? "yes" : "no"} attackable=${attackable} patternDir=${patternDirection} patternSign=${patternMovingPositive} passWalls=${passThroughWalls}`;
     });
   }, [gameState]);
 

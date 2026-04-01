@@ -980,6 +980,24 @@ summary {
   box-shadow: 0 0 0 1px rgba(30, 66, 38, 0.28);
 }
 
+.map2-cell-predicted .map2-cell-base::before {
+  inset: 1px;
+  background:
+    linear-gradient(135deg, rgba(255, 119, 119, 0.18), rgba(255, 119, 119, 0));
+}
+
+.map2-cell-predicted .map2-cell-base::after {
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid rgba(255, 147, 147, 0.82);
+  border-left: 2px solid rgba(255, 147, 147, 0.82);
+  border-radius: 2px 0 0 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .map2-fog-hidden .map2-cell-base {
   background: #000;
 }
@@ -1017,6 +1035,54 @@ summary {
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.26);
 }
 
+.map2-token::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.map2-token-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  min-width: 24px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(8, 12, 18, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f8fbff;
+  font-size: 0.76rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.24);
+}
+
+.map2-intent-arrow {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(8, 12, 18, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffdede;
+  font-size: 0.78rem;
+  line-height: 1;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+}
+
 .map2-token-core {
   font-size: 1rem;
   font-weight: 800;
@@ -1029,9 +1095,10 @@ summary {
 .map2-entity-stairs .map2-token-core,
 .map2-entity-fountain .map2-token-core,
 .map2-entity-portal .map2-token-core,
-.map2-entity-lime .map2-token-core,
+.map2-entity-pickup-energy .map2-token-core,
 .map2-entity-torch .map2-token-core,
-.map2-entity-chest .map2-token-core {
+.map2-entity-chest .map2-token-core,
+.map2-entity-pickup-treasure .map2-token-core {
   color: #111111;
   text-shadow: none;
 }
@@ -1054,6 +1121,16 @@ summary {
   border-color: #f2f2f2;
 }
 
+.map2-entity-ghost-danger .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #ffd0d0 0%, #ff7d7d 34%, #8b1f1f 100%);
+  border-color: #ffe6e6;
+  box-shadow:
+    0 0 0 1px rgba(255, 183, 183, 0.22),
+    0 0 16px rgba(255, 104, 104, 0.18);
+}
+
 .map2-entity-stairs .map2-token {
   border-radius: 12px;
   background:
@@ -1072,6 +1149,22 @@ summary {
   box-shadow:
     0 0 0 1px rgba(170, 245, 255, 0.3),
     0 0 18px rgba(90, 224, 247, 0.22);
+}
+
+.map2-entity-fountain-spent .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #dfe5e8 0%, #a9b4bb 30%, #5b666d 100%);
+  border-color: #263239;
+  box-shadow:
+    0 0 0 1px rgba(213, 221, 226, 0.18),
+    0 6px 12px rgba(0, 0, 0, 0.22);
+}
+
+.map2-entity-fountain-spent .map2-token-core,
+.map2-entity-fountain-spent .map2-token-badge {
+  color: #111111;
+  text-shadow: none;
 }
 
 .map2-entity-breakable .map2-token {
@@ -1104,23 +1197,81 @@ summary {
     0 0 20px rgba(172, 119, 255, 0.2);
 }
 
-.map2-entity-rock.map2-cell-wall .map2-cell-base {
-  background:
-    linear-gradient(180deg, #5d5d5d 0%, #4a4a4a 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(15, 15, 15, 0.48),
-    inset 0 0 0 2px rgba(255, 255, 255, 0.03);
-}
-
 .map2-entity-interactive .map2-token {
   background: #7a7a7a;
   border-color: #f2f2f2;
 }
 
-.map2-entity-lime .map2-token {
+.map2-entity-pickup-energy .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #fffbd3 0%, #ffe978 34%, #e4b92f 100%);
+  border-color: #5a4705;
+  box-shadow:
+    0 0 0 1px rgba(255, 236, 150, 0.24),
+    0 0 16px rgba(231, 191, 53, 0.18);
+}
+
+.map2-entity-pickup-treasure .map2-token {
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #fff1bf 0%, #e1aa2d 100%);
+  border-color: #4a3104;
+  box-shadow:
+    0 0 0 1px rgba(255, 228, 149, 0.22),
+    0 0 16px rgba(214, 163, 49, 0.16);
+}
+
+.map2-entity-pickup-marble .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #d7ffe0 0%, #8bdf8c 34%, #2d8d46 100%);
+  border-color: #113f1d;
+  box-shadow:
+    0 0 0 1px rgba(183, 245, 191, 0.2),
+    0 0 16px rgba(70, 177, 92, 0.16);
+}
+
+.map2-entity-pickup-generic .map2-token {
   border-radius: 999px;
   background: #f2f2f2;
   border-color: #2a2a2a;
+}
+
+.map2-entity-pickup-energy .map2-token::before,
+.map2-entity-pickup-treasure .map2-token::before,
+.map2-entity-pickup-marble .map2-token::before {
+  opacity: 0.16;
+}
+
+.map2-entity-pickup-energy .map2-token::before {
+  content: "E";
+}
+
+.map2-entity-pickup-treasure .map2-token::before {
+  content: "$";
+}
+
+.map2-entity-pickup-marble .map2-token::before {
+  content: "M";
+}
+
+.map2-entity-pickup-energy .map2-token-badge {
+  background: rgba(90, 71, 5, 0.92);
+  border-color: rgba(255, 233, 120, 0.32);
+  color: #fff9d9;
+}
+
+.map2-entity-pickup-treasure .map2-token-badge {
+  background: rgba(74, 49, 4, 0.92);
+  border-color: rgba(255, 230, 166, 0.32);
+  color: #fff4d0;
+}
+
+.map2-entity-pickup-marble .map2-token-badge {
+  background: rgba(17, 63, 29, 0.92);
+  border-color: rgba(186, 255, 196, 0.32);
+  color: #e9ffec;
 }
 
 .map2-entity-violet .map2-token,
