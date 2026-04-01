@@ -58,6 +58,11 @@ function ProductMobileControls({ model }: GameplayProductMapProps) {
 
   return (
     <div className="product-mobile-controls">
+      <div className="product-mobile-controls-topbar">
+        <button type="button" className="product-mobile-menu-button" onClick={model.openMenu}>
+          Menu
+        </button>
+      </div>
       <button type="button" onClick={() => void controls.handleMove("up")} disabled={Boolean(controls.validateMove("up")) || model.gameplay.isActionLocked}>
         Up
       </button>
