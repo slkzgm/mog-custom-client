@@ -5,53 +5,6 @@ interface GameplayProductLobbyProps {
   model: GameplayProductScreenModel;
 }
 
-function ProductStatusBar({ model }: GameplayProductLobbyProps) {
-  const walletLabel = model.auth.isWalletConnected ? shortenAddress(model.auth.walletAddress) : "Disconnected";
-
-  return (
-    <div className="product-status-strip">
-      <div className="product-status-item">
-        <span>Operator</span>
-        <strong>{walletLabel}</strong>
-      </div>
-      <div className="product-status-item">
-        <span>Arcade Keys</span>
-        <strong>{model.normalGameplay.runSession.balanceQuery.data?.balance ?? "-"}</strong>
-      </div>
-      <div className="product-status-item">
-        <span>World Keys</span>
-        <strong>{model.worldGameplay.runSession.balanceQuery.data?.balance ?? "-"}</strong>
-      </div>
-      <div className="product-status-item">
-        <span>Amber</span>
-        <strong>{model.amberBalanceQuery.data?.balance ?? "-"}</strong>
-      </div>
-      <div className="product-status-item">
-        <span>Session</span>
-        <strong>{model.auth.isAuthenticated ? "Authenticated" : "Pending"}</strong>
-      </div>
-    </div>
-  );
-}
-
-function ProductIdentityCard({ model }: GameplayProductLobbyProps) {
-  const profileName = model.auth.profileQuery.data?.profileName ?? "Unnamed operator";
-  const profilePictureUrl = model.auth.profileQuery.data?.profilePictureUrl ?? null;
-
-  return (
-    <section className="product-card product-identity-card">
-      <div className="product-avatar-frame">
-        {profilePictureUrl ? <img src={profilePictureUrl} alt={profileName} className="product-avatar-image" /> : <span>{profileName.slice(0, 1)}</span>}
-      </div>
-      <div className="product-identity-copy">
-        <span className="product-card-label">Operator Profile</span>
-        <h2>{profileName}</h2>
-        <p>{model.auth.walletAddress ? shortenAddress(model.auth.walletAddress) : "No wallet connected yet."}</p>
-      </div>
-    </section>
-  );
-}
-
 function ProductHero({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <div className="product-hero">
@@ -157,7 +110,7 @@ function RunModeCard({
   mode: GameplayProductScreenModel["modeCards"][number];
 }) {
   const isLoading = mode.session.runSession.createRunMutation.isPending || mode.session.runSession.runStateQuery.isFetching;
-  const actionLabel = mode.hasActiveRun ? "Resume Run" : "Start Run";
+  const actionLabel = mode.hasLoadedRunState ? "Open Run" : mode.hasActiveRun ? "Resume Run" : "Start Run";
   const onPrimaryAction = mode.hasActiveRun ? mode.handleResumeRun : mode.handleStartRun;
 
   return (
@@ -271,10 +224,6 @@ function BuyKeysPanel({ model }: GameplayProductLobbyProps) {
 export function GameplayProductLobby({ model }: GameplayProductLobbyProps) {
   return (
     <section className="product-lobby">
-      <ProductStatusBar model={model} />
-
-      {model.auth.isWalletConnected ? <ProductIdentityCard model={model} /> : null}
-
       {model.shouldShowConnect ? <ConnectPanel model={model} /> : null}
       {model.shouldShowChainSwitch ? <ChainPanel model={model} /> : null}
       {model.shouldShowSignIn ? <SignInPanel model={model} /> : null}

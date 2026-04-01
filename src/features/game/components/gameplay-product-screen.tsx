@@ -10,6 +10,8 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
   const profilePictureUrl = model.auth.profileQuery.data?.profilePictureUrl ?? null;
   const walletLabel = model.auth.isWalletConnected ? shortenAddress(model.auth.walletAddress) : "Connect";
   const amberValue = player?.amber ?? model.amberBalanceQuery.data?.balance ?? "-";
+  const weeklyMarbles = model.claimsQuery.data?.currentWeek?.userMarbles ?? "-";
+  const weeklyTreasure = model.claimsQuery.data?.currentWeek?.userTreasure ?? "-";
 
   return (
     <header className="product-topbar">
@@ -22,7 +24,7 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
           </div>
           <div className="product-topbar-stat product-topbar-stat-marble">
             <span>Marbles</span>
-            <strong>{player?.marbles ?? "-"}</strong>
+            <strong>{weeklyMarbles}</strong>
           </div>
           <div className="product-topbar-stat product-topbar-stat-ember">
             <span>World Keys</span>
@@ -30,7 +32,7 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
           </div>
           <div className="product-topbar-stat">
             <span>Treasures</span>
-            <strong>{player?.treasure ?? "-"}</strong>
+            <strong>{weeklyTreasure}</strong>
           </div>
           <div className="product-topbar-stat product-topbar-stat-amber">
             <span>Amber</span>

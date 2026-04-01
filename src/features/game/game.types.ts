@@ -17,6 +17,19 @@ export interface KeysBalance {
   resource: BalanceResource;
 }
 
+export interface ClaimsWeekSnapshot {
+  weekNumber: number | null;
+  userTreasure: number | null;
+  userMarbles: number | null;
+  totalTreasure: number | null;
+}
+
+export interface ClaimsSnapshot {
+  currentWeek: ClaimsWeekSnapshot | null;
+  totalClaimable: string | null;
+  claimsLocked: boolean;
+}
+
 export type MoveDirection = "up" | "down" | "left" | "right";
 export type RunActionType = "move" | "attack" | "break" | "pass";
 

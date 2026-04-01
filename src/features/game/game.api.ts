@@ -3,6 +3,8 @@ import { ApiError } from "../../lib/http/api-error";
 import type {
   ActiveRunSnapshot,
   BalanceResource,
+  ClaimsSnapshot,
+  ClaimsWeekSnapshot,
   CreateRunResult,
   EnemySnapshot,
   GameBuffSnapshot,
@@ -257,6 +259,18 @@ function normalizeRunType(value: unknown): RunType | null {
   return value;
 }
 
+function toClaimsWeekSnapshot(payload: unknown): ClaimsWeekSnapshot | null {
+  const source = asRecord(payload);
+  if (!source) return null;
+
+  return {
+    weekNumber: pickFirstNumber(source, ["weekNumber"]),
+    userTreasure: pickFirstNumber(source, ["userTreasure"]),
+    userMarbles: pickFirstNumber(source, ["userMarbles"]),
+    totalTreasure: pickFirstNumber(source, ["totalTreasure"]),
+  };
+}
+
 function toBalanceResponse(source: Record<string, unknown> | null, resource: BalanceResource) {
   return {
     balance: source ? pickFirstNumber(source, ["balance"]) : null,
@@ -360,6 +374,28 @@ export async function fetchKeysBalance(resource: BalanceResource = "keys"): Prom
   const source = asRecord(payload);
 
   return toBalanceResponse(source, resource);
+}
+
+export async function fetchClaims(): Promise<ClaimsSnapshot> {
+  const payload = await apiRequest<unknown>("claims", {
+    method: "GET",
+    credentials: "include",
+  });
+  const source = asRecord(payload);
+
+  if (!source) {
+    return {
+      currentWeek: null,
+      totalClaimable: null,
+      claimsLocked: false,
+    };
+  }
+
+  return {
+    currentWeek: toClaimsWeekSnapshot(source.currentWeek),
+    totalClaimable: pickFirstString(source, ["totalClaimable"]),
+    claimsLocked: source.claimsLocked === true,
+  };
 }
 
 export async function createRun(keysAmount: number, runType: RunType = "NORMAL"): Promise<CreateRunResult> {
