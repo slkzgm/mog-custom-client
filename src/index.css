@@ -298,6 +298,11 @@ summary {
   margin: 0 auto;
 }
 
+.product-shell-map .product-shell-body {
+  width: calc(100vw - 24px);
+  max-width: none;
+}
+
 .product-topbar {
   position: fixed;
   top: 0;
@@ -710,26 +715,71 @@ summary {
 .product-map-shell {
   min-height: calc(100vh - 72px);
   display: grid;
-  place-items: center;
+  width: 100%;
 }
 
 .product-map-stage {
   width: 100%;
   display: grid;
-  place-items: center;
   gap: 24px;
-  padding: 28px 0 36px;
+  padding: 18px 0 36px;
+}
+
+.product-map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 42px;
+}
+
+.product-map-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-map-toolbar-group-spacer {
+  flex: 1 1 auto;
+}
+
+.product-map-toolbar-button {
+  min-height: 36px;
+  border: 0;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--product-text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.product-map-toolbar-button.is-active {
+  background: rgba(251, 188, 0, 0.14);
+  color: var(--product-gold);
+}
+
+.product-map-toolbar-readout,
+.product-map-toolbar-meta {
+  color: var(--product-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .product-map-grid-wrap {
-  --map2-cell-size: 58px;
+  --map2-cell-size: 64px;
   position: relative;
-  padding: 120px 170px;
+  width: 100%;
+  min-height: calc(100vh - 180px);
+  padding: 88px 112px 112px;
   display: grid;
   place-items: center;
   background:
     radial-gradient(circle at center, rgba(251, 188, 0, 0.06), transparent 34%),
     linear-gradient(180deg, rgba(12, 14, 17, 0.92), rgba(12, 14, 17, 0.98));
+  overflow: auto;
 }
 
 .product-map-grid-wrap .map2-grid {
@@ -1004,9 +1054,14 @@ summary {
     padding-bottom: 24px;
   }
 
+  .product-map-toolbar {
+    display: none;
+  }
+
   .product-map-grid-wrap {
     --map2-cell-size: 34px;
     width: 100%;
+    min-height: 0;
     padding: 18px 0 24px;
     background: transparent;
   }

@@ -7,6 +7,75 @@ interface GameplayProductMapProps {
   model: GameplayProductScreenModel;
 }
 
+function ProductMapToolbar({
+  model,
+  mapModel,
+}: {
+  model: GameplayProductScreenModel;
+  mapModel: ReturnType<typeof useMapBoardV2Model>;
+}) {
+  return (
+    <div className="product-map-toolbar">
+      <div className="product-map-toolbar-group">
+        <button
+          type="button"
+          className={`product-map-toolbar-button ${mapModel.viewMode === "focus" ? "is-active" : ""}`}
+          onClick={() => mapModel.setFocusMode("focus")}
+        >
+          Focus
+        </button>
+        <button
+          type="button"
+          className={`product-map-toolbar-button ${mapModel.viewMode === "full" ? "is-active" : ""}`}
+          onClick={() => mapModel.setFocusMode("full")}
+        >
+          Full
+        </button>
+      </div>
+
+      {mapModel.viewMode === "focus" ? (
+        <>
+          <div className="product-map-toolbar-group">
+            <button type="button" className="product-map-toolbar-button" onClick={mapModel.zoomIn}>
+              -
+            </button>
+            <span className="product-map-toolbar-readout">{mapModel.focusWindowSize}x{mapModel.focusWindowSize}</span>
+            <button type="button" className="product-map-toolbar-button" onClick={mapModel.zoomOut}>
+              +
+            </button>
+          </div>
+
+          <div className="product-map-toolbar-group">
+            <button type="button" className="product-map-toolbar-button" onClick={() => mapModel.panFocus(-2, 0)}>
+              Left
+            </button>
+            <button type="button" className="product-map-toolbar-button" onClick={() => mapModel.panFocus(0, -2)}>
+              Up
+            </button>
+            <button type="button" className="product-map-toolbar-button" onClick={() => mapModel.panFocus(0, 2)}>
+              Down
+            </button>
+            <button type="button" className="product-map-toolbar-button" onClick={() => mapModel.panFocus(2, 0)}>
+              Right
+            </button>
+            <button type="button" className="product-map-toolbar-button" onClick={mapModel.resetFocusOffset}>
+              Center
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      <div className="product-map-toolbar-group product-map-toolbar-group-spacer" />
+
+      <div className="product-map-toolbar-group">
+        <span className="product-map-toolbar-meta">
+          Floor {model.gameplay.runState?.currentFloor ?? "-"} / Turn {model.gameplay.runState?.turnNumber ?? "-"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ProductMapHud({ model }: GameplayProductMapProps) {
   const player = model.gameplay.runState?.player;
   const upgrades = player?.upgrades ?? [];
@@ -154,6 +223,7 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
   return (
     <section className="product-map-shell">
       <div className="product-map-stage">
+        <ProductMapToolbar model={model} mapModel={mapModel} />
         <div className="product-map-grid-wrap">
           <MapBoardV2Grid
             cells={mapModel.cells}
