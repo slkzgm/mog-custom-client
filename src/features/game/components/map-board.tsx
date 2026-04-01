@@ -9,7 +9,7 @@ import {
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
-import { interactiveSymbol } from "../map-interactive-visuals";
+import { interactiveSymbol, isRockInteractive } from "../map-interactive-visuals";
 import { resolvePickupVisual } from "../map-pickup-visuals";
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 
@@ -83,15 +83,15 @@ function asTwoDigits(value: number): string {
 
 function tileLabel(tile: number | null): string {
   if (tile === 0) return "corridor";
-  if (tile === 1) return "room";
-  if (tile === 2) return "wall";
+  if (tile === 1) return "wall";
+  if (tile === 2) return "hard-wall";
   return "unknown";
 }
 
 function tileSymbol(tile: number | null): string {
   if (tile === 0) return ":";
-  if (tile === 1) return ".";
-  if (tile === 2) return "#";
+  if (tile === 1) return "#";
+  if (tile === 2) return "X";
   return "?";
 }
 
@@ -151,8 +151,8 @@ function entityTokenSymbol(kind: CellEntityKind | null, symbol: string): string 
 }
 
 function tileAccentClass(tile: number | null): string {
-  if (tile === 2) return "map-cell-accent-wall";
-  if (tile === 1) return "map-cell-accent-room";
+  if (tile === 2) return "map-cell-accent-hard-wall";
+  if (tile === 1) return "map-cell-accent-wall";
   if (tile === 0) return "map-cell-accent-corridor";
   return "map-cell-accent-unknown";
 }
@@ -306,6 +306,16 @@ function resolveEntityData(params: {
 
   const interactive = params.interactiveByKey.get(params.key);
   if (interactive) {
+    if (isRockInteractive(interactive)) {
+      return {
+        symbol: "",
+        entityKind: null,
+        entityType: null,
+        entityId: null,
+        enemyHp: null,
+        badges: [],
+      };
+    }
     const typeBadge = shortTypeCode(interactive.type);
     const idBadge = shortIdBadge(interactive.id);
     return {
@@ -551,7 +561,7 @@ export function MapBoard({
             <summary>Legend & controls</summary>
             <p className="map-board-legend">
               Legend: @ player, E enemy, G ghost, &gt; stairs, C chest, F fountain, B breakable, I interactive, $ pickup, ^ trap,
-              A arrow trap, O portal, # wall, . room, : corridor.
+              A arrow trap, O portal, # wall, X hard-wall, : corridor.
             </p>
             <p className="map-board-legend">
               Adjacent action hints: green=move, orange=break, red=attack, gray=blocked.

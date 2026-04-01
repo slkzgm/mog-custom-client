@@ -77,14 +77,17 @@ export function useGamePanelModel() {
     controls: {
       moveRunId: runSession.moveRunId,
       runMoveMutation: runActions.runMoveMutation,
+      runTeleportMutation: runActions.runTeleportMutation,
       isAnyActionPending: runActions.isAnyActionPending,
       hotkeysDisabled: runActions.hotkeysDisabled,
       isRefreshDisabled: runActions.isRefreshDisabled || buyKeys.isBuyKeysReceiptFetching || buyKeys.buyKeysMutation.isPending,
       validateMove: runActions.validateMove,
       validatePass: runActions.validatePass,
+      validateUsePortal: runActions.validateUsePortal,
       getDirectionalActionLabel: runActions.getDirectionalActionLabel,
       handleMove: runActions.handleMove,
       handlePass: runActions.handlePass,
+      handleUsePortal: runActions.handleUsePortal,
     },
     queries: {
       activeRunQuery: runSession.activeRunQuery,

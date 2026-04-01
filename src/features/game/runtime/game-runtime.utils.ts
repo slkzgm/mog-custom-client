@@ -56,7 +56,7 @@ export function formatDurationMs(value: number | null): string {
 export function countTileKinds(mapData: number[][] | null) {
   const counts = {
     wall: 0,
-    room: 0,
+    hardWall: 0,
     corridor: 0,
     other: 0,
   };
@@ -65,8 +65,8 @@ export function countTileKinds(mapData: number[][] | null) {
 
   for (const row of mapData) {
     for (const tile of row) {
-      if (tile === 2) counts.wall += 1;
-      else if (tile === 1) counts.room += 1;
+      if (tile === 2) counts.hardWall += 1;
+      else if (tile === 1) counts.wall += 1;
       else if (tile === 0) counts.corridor += 1;
       else counts.other += 1;
     }

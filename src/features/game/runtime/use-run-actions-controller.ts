@@ -5,6 +5,7 @@ import { gameActionQueue } from "../../realtime/game-action-queue";
 import {
   findBreakableInteractiveAtPosition,
   findEnemyAtPosition,
+  findPortalAtPosition,
   getMoveTarget,
   isAttackableEnemy,
   isMoveTargetPassable,
@@ -13,6 +14,7 @@ import type { GameStateSnapshot, MoveDirection } from "../game.types";
 import { useRunMoveMutation } from "../use-run-move-mutation";
 import { useRunRerollMutation } from "../use-run-reroll-mutation";
 import { useSelectUpgradeMutation } from "../use-select-upgrade-mutation";
+import { useRunTeleportMutation } from "../use-run-teleport-mutation";
 import type { RunSessionController } from "./use-run-session-controller";
 
 interface RunQueuedActionParams {
@@ -37,10 +39,12 @@ export function useRunActionsController(
   >,
 ) {
   const runMoveMutation = useRunMoveMutation();
+  const runTeleportMutation = useRunTeleportMutation();
   const runRerollMutation = useRunRerollMutation();
   const selectUpgradeMutation = useSelectUpgradeMutation();
 
-  const isAnyActionPending = runMoveMutation.isPending || runRerollMutation.isPending || selectUpgradeMutation.isPending;
+  const isAnyActionPending =
+    runMoveMutation.isPending || runTeleportMutation.isPending || runRerollMutation.isPending || selectUpgradeMutation.isPending;
   const rerollValidationError = !runSession.moveRunId
     ? "No active run id."
     : !runSession.hasPendingUpgradeSelection
@@ -136,6 +140,17 @@ export function useRunActionsController(
     return null;
   }, [runSession]);
 
+  const validateUsePortal = useCallback((): string | null => {
+    if (!runSession.moveRunId) return "No active run id.";
+    if (!runSession.effectiveGameState) return "No run gameState loaded yet.";
+    if (runSession.hasPendingUpgradeSelection) return "Upgrade selection is pending.";
+    const player = runSession.effectiveGameState.player;
+    if (!player) return "Player position unavailable.";
+    const portal = findPortalAtPosition(runSession.effectiveGameState, player.x, player.y);
+    if (!portal) return "Player is not standing on a portal.";
+    return null;
+  }, [runSession]);
+
   const getDirectionalActionLabel = useCallback(
     (direction: MoveDirection): string => {
       if (!runSession.effectiveGameState) return "Move";
@@ -220,6 +235,24 @@ export function useRunActionsController(
     });
   }, [runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState]);
 
+  const handleUsePortal = useCallback(async () => {
+    await runQueuedRuntimeAction("portal:use", async ({ queuedState, queuedRunId }) => {
+      const player = queuedState.player;
+      if (!player) return;
+      const portal = findPortalAtPosition(queuedState, player.x, player.y);
+      if (!portal) return;
+
+      const result = await runTeleportMutation.mutateAsync({
+        runId: queuedRunId,
+      });
+
+      if (result.gameState) {
+        runSession.runtimeState.replaceLocalGameState(result.gameState);
+      }
+      runSession.runtimeState.replaceLastMoveEvents(result.events);
+    });
+  }, [runQueuedRuntimeAction, runSession.runtimeState, runTeleportMutation]);
+
   const handleRerollUpgrades = useCallback(async () => {
     if (!runSession.moveRunId || !runSession.hasPendingUpgradeSelection) return;
     if (!runSession.hasEnoughTreasureForReroll) return;
@@ -274,13 +307,21 @@ export function useRunActionsController(
     () =>
       runSession.isRefreshDisabled ||
       runMoveMutation.isPending ||
+      runTeleportMutation.isPending ||
       runRerollMutation.isPending ||
       selectUpgradeMutation.isPending,
-    [runMoveMutation.isPending, runRerollMutation.isPending, runSession.isRefreshDisabled, selectUpgradeMutation.isPending],
+    [
+      runMoveMutation.isPending,
+      runRerollMutation.isPending,
+      runSession.isRefreshDisabled,
+      runTeleportMutation.isPending,
+      selectUpgradeMutation.isPending,
+    ],
   );
 
   return {
     runMoveMutation,
+    runTeleportMutation,
     runRerollMutation,
     selectUpgradeMutation,
     isAnyActionPending,
@@ -290,9 +331,11 @@ export function useRunActionsController(
     isRefreshDisabled,
     validateMove,
     validatePass,
+    validateUsePortal,
     getDirectionalActionLabel,
     handleMove,
     handlePass,
+    handleUsePortal,
     handleRerollUpgrades,
     handleSelectUpgrade,
   };

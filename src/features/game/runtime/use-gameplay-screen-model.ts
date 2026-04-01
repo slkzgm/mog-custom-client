@@ -24,6 +24,11 @@ export function useGameplayScreenModel() {
     hotkeysDisabled: runActions.hotkeysDisabled,
     handleMove: runActions.handleMove,
     handlePass: runActions.handlePass,
+    portal: {
+      runTeleportMutation: runActions.runTeleportMutation,
+      validateUsePortal: runActions.validateUsePortal,
+      handleUsePortal: runActions.handleUsePortal,
+    },
     upgrades: {
       pendingUpgradeOptions: runSession.pendingUpgradeOptions,
       hasPendingUpgradeSelection: runSession.hasPendingUpgradeSelection,

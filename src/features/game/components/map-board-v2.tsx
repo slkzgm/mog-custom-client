@@ -3,13 +3,16 @@ import { useMemo, useState } from "react";
 import {
   findBreakableInteractiveAtPosition,
   findEnemyAtPosition,
+  findPortalAtPosition,
   getMoveTarget,
   isAttackableEnemy,
   isGhostEnemy,
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
-import { interactiveValueText, resolveInteractiveVisual } from "../map-interactive-visuals";
+import type { EntityCornerBadge } from "../map-enemy-visuals";
+import { isSkullEnemySprite, resolveEnemyVisual } from "../map-enemy-visuals";
+import { interactiveValueText, isRockInteractive, resolveInteractiveVisual } from "../map-interactive-visuals";
 import { pickupValueText, resolvePickupVisual } from "../map-pickup-visuals";
 import type { GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 import { useEncounterCatalog } from "../runtime/use-encounter-catalog";
@@ -21,7 +24,7 @@ import { useMapVisitedCells } from "../runtime/use-map-visited-cells";
 import { appConfig } from "../../../app/config";
 
 type FogState = "hidden" | "explored" | "visible" | "remembered";
-type TileKind = "wall" | "room" | "corridor" | "unknown" | "void";
+type TileKind = "wall" | "hard-wall" | "corridor" | "unknown" | "void";
 type HintKind = "move" | "attack" | "break" | "blocked";
 type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arrow-trap" | "portal";
 
@@ -29,6 +32,9 @@ interface MapBoardV2Props {
   gameState: GameStateSnapshot;
   onDirectionalAction?: (direction: MoveDirection) => void | Promise<void>;
   onPassAction?: () => void | Promise<void>;
+  onPortalAction?: () => void | Promise<void>;
+  isPortalActionDisabled?: boolean;
+  portalActionTitle?: string;
   isActionLocked?: boolean;
 }
 
@@ -63,8 +69,7 @@ interface CellEntity {
   hpRatio: number | null;
   showToken: boolean;
   useWallSurface: boolean;
-  valueText: string | null;
-  intentDirection: MoveDirection | null;
+  badges: EntityCornerBadge[];
 }
 
 function keyOf(x: number, y: number) {
@@ -89,10 +94,12 @@ function fogStateAt(gameState: GameStateSnapshot, x: number, y: number): FogStat
 
 function tileKindAt(gameState: GameStateSnapshot, x: number, y: number): TileKind {
   if (x < 0 || y < 0) return "void";
+  const rock = gameState.interactive.find((item) => item.x === x && item.y === y && isRockInteractive(item));
+  if (rock) return "wall";
   const value = matrixAt(gameState.mapData, x, y);
   if (value === null) return "void";
-  if (value === 2) return "wall";
-  if (value === 1) return "room";
+  if (value === 2) return "hard-wall";
+  if (value === 1) return "wall";
   if (value === 0) return "corridor";
   return "unknown";
 }
@@ -100,12 +107,6 @@ function tileKindAt(gameState: GameStateSnapshot, x: number, y: number): TileKin
 function clamp(value: number, min: number, max: number) {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
-}
-
-function isSkullEnemySprite(spriteType: string | null) {
-  if (!spriteType) return false;
-  const normalized = spriteType.trim().toLowerCase();
-  return normalized.includes("skeleton") || normalized.includes("skull");
 }
 
 function isGhostEnemyLabels(type: string, spriteType: string | null) {
@@ -145,7 +146,7 @@ function patternDirectionDelta(direction: "horizontal" | "vertical", isPositive:
 function canEnemyTraverseTile(gameState: GameStateSnapshot, x: number, y: number, canPassThroughWalls: boolean | null) {
   const tile = tileKindAt(gameState, x, y);
   if (tile === "void" || tile === "unknown") return false;
-  if (tile === "wall") return canPassThroughWalls === true;
+  if (tile === "wall" || tile === "hard-wall") return canPassThroughWalls === true;
   return true;
 }
 
@@ -314,8 +315,15 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: token.showToken,
       useWallSurface: token.useWallSurface,
-      valueText: interactiveValueText(entity),
-      intentDirection: null,
+      badges: interactiveValueText(entity)
+        ? [
+            {
+              position: "se",
+              text: interactiveValueText(entity) ?? "",
+              tone: "value",
+            },
+          ]
+        : [],
     };
   }
 
@@ -332,8 +340,15 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: token.valueText,
-      intentDirection: null,
+      badges: token.valueText
+        ? [
+            {
+              position: "se",
+              text: token.valueText,
+              tone: "value",
+            },
+          ]
+        : [],
     };
   }
 
@@ -346,8 +361,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -360,8 +374,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -374,8 +387,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -385,16 +397,18 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
 function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): CellEntity | null {
   const isPlayer = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
   if (isPlayer) {
+    const player = gameState.player;
+    const energyText =
+      player && typeof player.energy === "number" && Number.isFinite(player.energy) ? String(Math.max(0, Math.round(player.energy))) : "@";
     return {
       kind: "player",
       label: "Player",
-      token: "@",
+      token: energyText,
       accent: "player",
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -402,21 +416,27 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
   if (enemy) {
     const ratio =
       enemy.hp !== null && enemy.maxHp !== null && enemy.maxHp > 0 ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHp)) : null;
+    const nextMoveDirection = predictEnemyNextMoveDirection(gameState, enemy);
+    const visual = resolveEnemyVisual(enemy, {
+      intentArrow: nextMoveDirection ? intentArrow(nextMoveDirection) : null,
+    });
     return {
       kind: "enemy",
-      label: isGhostEnemy(enemy) ? "Ghost" : enemy.type,
-      token: isGhostEnemy(enemy) ? "G" : "!",
-      accent: isGhostEnemy(enemy) ? (enemy.damage !== null && enemy.damage > 0 ? "ghost-danger" : "ghost") : "enemy",
+      label: visual.label,
+      token: visual.token,
+      accent: visual.accent,
       hpRatio: ratio,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: predictEnemyNextMoveDirection(gameState, enemy),
+      badges: visual.badges,
     };
   }
 
   const interactive = gameState.interactive.find((item) => item.x === x && item.y === y);
   if (interactive) {
+    if (isRockInteractive(interactive)) {
+      return null;
+    }
     const token = resolveInteractiveVisual(interactive);
     return {
       kind: "interactive",
@@ -426,8 +446,15 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: token.showToken,
       useWallSurface: token.useWallSurface,
-      valueText: interactiveValueText(interactive),
-      intentDirection: null,
+      badges: interactiveValueText(interactive)
+        ? [
+            {
+              position: "se",
+              text: interactiveValueText(interactive) ?? "",
+              tone: "value",
+            },
+          ]
+        : [],
     };
   }
 
@@ -442,8 +469,15 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: token.valueText,
-      intentDirection: null,
+      badges: token.valueText
+        ? [
+            {
+              position: "se",
+              text: token.valueText,
+              tone: "value",
+            },
+          ]
+        : [],
     };
   }
 
@@ -457,8 +491,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -472,8 +505,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -487,8 +519,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      valueText: null,
-      intentDirection: null,
+      badges: [],
     };
   }
 
@@ -499,6 +530,9 @@ export function MapBoardV2({
   gameState,
   onDirectionalAction,
   onPassAction,
+  onPortalAction,
+  isPortalActionDisabled = false,
+  portalActionTitle,
   isActionLocked = false,
 }: MapBoardV2Props) {
   const [viewMode, setViewMode] = useState<"focus" | "full">("focus");
@@ -561,6 +595,17 @@ export function MapBoardV2({
   const fallbackKey = gameState.player ? keyOf(gameState.player.x, gameState.player.y) : null;
   const activeSelectedKey = selectedKey ?? fallbackKey;
   const selectedEnemy = activeSelectedKey ? enemyLookup.get(activeSelectedKey) ?? null : null;
+  const playerPortal = useMemo(() => {
+    const player = gameState.player;
+    if (!player) return null;
+    return findPortalAtPosition(gameState, player.x, player.y);
+  }, [gameState]);
+  const selectedPortal = useMemo(() => {
+    if (!activeSelectedKey) return null;
+    const [x, y] = activeSelectedKey.split(",").map(Number);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return findPortalAtPosition(gameState, x, y);
+  }, [activeSelectedKey, gameState]);
   const selectedEnemyNextMoveDirection = useMemo(
     () => (selectedEnemy ? predictEnemyNextMoveDirection(gameState, selectedEnemy) : null),
     [gameState, selectedEnemy],
@@ -654,6 +699,15 @@ export function MapBoardV2({
                 const isPlayerTile = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
                 const canSkip = isPlayerTile && onPassAction && !isActionLocked;
                 const canUseHint = Boolean(hint && hint.kind !== "blocked" && onDirectionalAction && !isActionLocked);
+                const portalAtCell = findPortalAtPosition(gameState, x, y);
+                const canUsePortalDirectly = Boolean(
+                  playerPortal &&
+                    portalAtCell &&
+                    (!isPlayerTile || portalAtCell.id !== playerPortal.id) &&
+                    onPortalAction &&
+                    !isPortalActionDisabled &&
+                    !isActionLocked,
+                );
 
                 return (
                   <button
@@ -672,6 +726,10 @@ export function MapBoardV2({
                       .join(" ")}
                     onClick={() => {
                       setSelectedKey(key);
+                      if (canUsePortalDirectly) {
+                        void onPortalAction?.();
+                        return;
+                      }
                       if (canSkip) {
                         void onPassAction?.();
                         return;
@@ -693,20 +751,16 @@ export function MapBoardV2({
                         <span className="map2-token-core">{entity.token}</span>
                       </span>
                     ) : null}
-                    {entity?.intentDirection && fog !== "hidden" ? (
-                      <span className={`map2-intent-arrow map2-intent-arrow-${entity.intentDirection}`}>
-                        {intentArrow(entity.intentDirection)}
-                      </span>
-                    ) : null}
-                    {entity?.valueText && fog !== "hidden" ? <span className="map2-token-badge">{entity.valueText}</span> : null}
-                    {entity && fog !== "hidden" && entity.hpRatio !== null ? (
-                      <span className="map2-health">
-                        <span
-                          className="map2-health-fill"
-                          style={{ width: `${Math.max(10, Math.round(entity.hpRatio * 100))}%` }}
-                        />
-                      </span>
-                    ) : null}
+                    {entity && fog !== "hidden"
+                      ? entity.badges.map((badge) => (
+                          <span
+                            key={`${badge.position}:${badge.text}`}
+                            className={`map2-token-badge map2-token-badge-${badge.position} map2-token-badge-${badge.tone}`}
+                          >
+                            {badge.text}
+                          </span>
+                        ))
+                      : null}
                   </button>
                 );
               }),
@@ -791,6 +845,18 @@ export function MapBoardV2({
               <span>Selected</span>
               <strong>{activeSelectedKey ?? "-"}</strong>
             </div>
+            {selectedPortal ? (
+              <>
+                <div className="map2-kv">
+                  <span>Portal</span>
+                  <strong>{selectedPortal.id ?? selectedPortal.type}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Linked</span>
+                  <strong>{selectedPortal.linkedPortalId ?? "-"}</strong>
+                </div>
+              </>
+            ) : null}
             <div className="map2-kv">
               <span>Enemy</span>
               <strong>{selectedEnemy?.type ?? "-"}</strong>
@@ -866,6 +932,18 @@ export function MapBoardV2({
                   <strong>{isAttackableEnemy(selectedEnemy) ? "yes" : "no"}</strong>
                 </div>
               </>
+            ) : null}
+            {playerPortal ? (
+              <div className="panel-actions">
+                <button
+                  type="button"
+                  onClick={() => void onPortalAction?.()}
+                  disabled={isPortalActionDisabled}
+                  title={portalActionTitle ?? "Use portal"}
+                >
+                  Use portal
+                </button>
+              </div>
             ) : null}
           </div>
 

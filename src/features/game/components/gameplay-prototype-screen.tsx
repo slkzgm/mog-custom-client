@@ -29,6 +29,9 @@ export function GameplayPrototypeScreen() {
         gameState={model.runState}
         onDirectionalAction={model.handleMove}
         onPassAction={model.handlePass}
+        onPortalAction={model.portal.handleUsePortal}
+        isPortalActionDisabled={Boolean(model.portal.validateUsePortal()) || model.portal.runTeleportMutation.isPending || model.isActionLocked}
+        portalActionTitle={model.portal.validateUsePortal() ?? "Use portal"}
         isActionLocked={model.isActionLocked}
       />
       {model.upgrades.hasPendingUpgradeSelection ? (

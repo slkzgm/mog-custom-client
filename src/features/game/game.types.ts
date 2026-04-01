@@ -37,6 +37,7 @@ export interface MapEntitySnapshot {
   y: number;
   type: string;
   id: string | null;
+  linkedPortalId?: string | null;
   value: number | null;
   damage: number | null;
   tileIndex: number | null;
@@ -115,6 +116,12 @@ export interface MoveRunResult {
   gameState: GameStateSnapshot | null;
   events: Record<string, unknown>[];
   isGameOver: boolean;
+}
+
+export interface TeleportRunResult extends MoveRunResult {
+  treasureCost: number | null;
+  newTreasure: number | null;
+  teleportUseCount: number | null;
 }
 
 export interface RunStateSnapshot {

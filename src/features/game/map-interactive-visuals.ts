@@ -37,9 +37,9 @@ const interactiveVisualDefinitions: Record<InteractiveVisualCategory, Interactiv
   },
   rock: {
     category: "rock",
-    label: "Rock",
+    label: "Wall",
     token: "",
-    accent: "rock",
+    accent: "wall",
     showToken: false,
     useWallSurface: true,
   },
@@ -79,6 +79,11 @@ const interactiveVisualDefinitions: Record<InteractiveVisualCategory, Interactiv
 
 function normalizeInteractiveType(value: string) {
   return value.trim().toLowerCase();
+}
+
+export function isRockInteractive(typeOrEntity: string | MapEntitySnapshot) {
+  const type = typeof typeOrEntity === "string" ? typeOrEntity : typeOrEntity.type;
+  return normalizeInteractiveType(type) === "rock";
 }
 
 function isSpentFountain(entity: MapEntitySnapshot) {

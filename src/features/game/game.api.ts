@@ -15,6 +15,7 @@ import type {
   RunRerollResult,
   RunStateSnapshot,
   SelectUpgradeParams,
+  TeleportRunResult,
   TorchSnapshot,
 } from "./game.types";
 
@@ -173,6 +174,7 @@ function toMapEntityList(value: unknown, fallbackType: string): MapEntitySnapsho
       y,
       type: pickFirstString(item, ["type"]) ?? fallbackType,
       id: pickFirstString(item, ["id"]),
+      linkedPortalId: pickFirstString(item, ["linkedPortalId"]),
       value: pickFirstNumber(item, ["value"]),
       damage: pickFirstNumber(item, ["damage"]),
       tileIndex: pickFirstNumber(item, ["tileIndex"]),
@@ -481,6 +483,36 @@ export async function fetchRunState(runId: string): Promise<RunStateSnapshot> {
   return {
     canResume: source.canResume === true,
     gameState: toGameState(source.gameState) ?? toGameState(source),
+  };
+}
+
+export async function teleportRun(runId: string): Promise<TeleportRunResult> {
+  const payload = await apiRequest<unknown>(`runs/${runId}/teleport`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  const source = asRecord(payload);
+  if (!source) {
+    return {
+      success: false,
+      gameState: null,
+      events: [],
+      isGameOver: false,
+      treasureCost: null,
+      newTreasure: null,
+      teleportUseCount: null,
+    };
+  }
+
+  return {
+    success: source.success === true,
+    gameState: toGameState(source.gameState) ?? toGameState(source),
+    events: toRecordArray(source.events),
+    isGameOver: source.isGameOver === true,
+    treasureCost: pickFirstNumber(source, ["treasureCost", "teleportCost"]),
+    newTreasure: pickFirstNumber(source, ["newTreasure", "playerTreasure"]),
+    teleportUseCount: pickFirstNumber(source, ["teleportUseCount"]),
   };
 }
 

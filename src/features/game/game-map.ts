@@ -1,5 +1,5 @@
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "./game.types";
-import { interactiveSymbol } from "./map-interactive-visuals";
+import { interactiveSymbol, isRockInteractive } from "./map-interactive-visuals";
 
 interface MoveDelta {
   dx: number;
@@ -43,8 +43,8 @@ function toEntityLookup<T extends { x: number; y: number }>(entities: T[]): Map<
 
 function tileToChar(tile: number): string {
   if (tile === 0) return ":";
-  if (tile === 1) return ".";
-  if (tile === 2) return "#";
+  if (tile === 1) return "#";
+  if (tile === 2) return "X";
   return "?";
 }
 
@@ -87,7 +87,7 @@ export function isMoveTargetPassable(
   targetY: number,
 ): boolean {
   const tile = matrixAt(gameState.mapData, targetX, targetY);
-  return tile === 0 || tile === 1;
+  return tile === 0;
 }
 
 export function findEnemyAtPosition(
@@ -98,6 +98,26 @@ export function findEnemyAtPosition(
   for (const enemy of gameState.enemies) {
     if (enemy.x === targetX && enemy.y === targetY) {
       return enemy;
+    }
+  }
+
+  return null;
+}
+
+export function findPortalAtPosition(
+  gameState: GameStateSnapshot,
+  targetX: number,
+  targetY: number,
+): MapEntitySnapshot | null {
+  for (const portal of gameState.portals) {
+    if (portal.x === targetX && portal.y === targetY) {
+      return portal;
+    }
+  }
+
+  for (const interactive of gameState.interactive) {
+    if (interactive.x === targetX && interactive.y === targetY && interactive.type.trim().toLowerCase() === "portal") {
+      return interactive;
     }
   }
 
@@ -177,6 +197,10 @@ export function buildAsciiMap(gameState: GameStateSnapshot): string[] {
 
       const interactive = interactiveByPosition.get(key);
       if (interactive) {
+        if (isRockInteractive(interactive)) {
+          renderedRow += "# ";
+          continue;
+        }
         renderedRow += `${interactiveToChar(interactive)} `;
         continue;
       }

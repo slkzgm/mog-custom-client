@@ -216,7 +216,7 @@ export function BoardSection({
         <div className="stat-card">
           <p className="stat-card-label">Tiles</p>
           <p>
-            w={board.tileCounts.wall} r={board.tileCounts.room} c={board.tileCounts.corridor}
+            w={board.tileCounts.wall} hw={board.tileCounts.hardWall} c={board.tileCounts.corridor}
           </p>
         </div>
         <div className="stat-card">

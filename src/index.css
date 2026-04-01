@@ -489,14 +489,14 @@ summary {
 
 .map-cell-accent-wall {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 12%, transparent 12% 100%),
-    linear-gradient(180deg, #232c39, #1a202b);
-}
-
-.map-cell-accent-room {
-  background:
     radial-gradient(circle at 50% 35%, rgba(109, 211, 255, 0.08), transparent 58%),
     linear-gradient(180deg, #1a2a3d, #142233);
+}
+
+.map-cell-accent-hard-wall {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 12%, transparent 12% 100%),
+    linear-gradient(180deg, #232c39, #1a202b);
 }
 
 .map-cell-accent-corridor {
@@ -578,11 +578,11 @@ summary {
 }
 
 .map-cell-tile-wall {
-  background: linear-gradient(180deg, #222a39, #1b2230);
+  background: linear-gradient(180deg, #18283d, #132131);
 }
 
-.map-cell-tile-room {
-  background: linear-gradient(180deg, #18283d, #132131);
+.map-cell-tile-hard-wall {
+  background: linear-gradient(180deg, #222a39, #1b2230);
 }
 
 .map-cell-tile-corridor {
@@ -929,8 +929,7 @@ summary {
 
 .map2-cell-base,
 .map2-cell-pattern,
-.map2-token,
-.map2-health {
+.map2-token {
   position: absolute;
 }
 
@@ -946,11 +945,11 @@ summary {
 }
 
 .map2-cell-wall .map2-cell-base {
-  background: #555555;
+  background: #ffffff;
 }
 
-.map2-cell-room .map2-cell-base {
-  background: #ffffff;
+.map2-cell-hard-wall .map2-cell-base {
+  background: #555555;
 }
 
 .map2-cell-corridor .map2-cell-base {
@@ -1014,7 +1013,7 @@ summary {
   display: none;
 }
 
-.map2-cell-room .map2-cell-pattern {
+.map2-cell-hard-wall .map2-cell-pattern {
   display: none;
 }
 
@@ -1049,8 +1048,6 @@ summary {
 
 .map2-token-badge {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
   min-width: 24px;
   padding: 3px 6px;
   border-radius: 999px;
@@ -1065,22 +1062,54 @@ summary {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.24);
 }
 
-.map2-intent-arrow {
-  position: absolute;
-  top: 2px;
+.map2-token-badge-nw {
+  top: 3px;
   left: 3px;
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
+}
+
+.map2-token-badge-ne {
+  top: 3px;
+  right: 3px;
+}
+
+.map2-token-badge-sw {
+  left: 3px;
+  bottom: 3px;
+}
+
+.map2-token-badge-se {
+  right: 3px;
+  bottom: 3px;
+}
+
+.map2-token-badge-danger {
+  background: rgba(111, 20, 20, 0.92);
+  border-color: rgba(255, 183, 183, 0.34);
+  color: #fff0f0;
+}
+
+.map2-token-badge-skull {
+  background: rgba(31, 31, 31, 0.94);
+  border-color: rgba(255, 244, 190, 0.28);
+  color: #fff3cb;
+}
+
+.map2-token-badge-ghost {
+  background: rgba(55, 55, 67, 0.92);
+  border-color: rgba(219, 224, 255, 0.28);
+  color: #f0f3ff;
+}
+
+.map2-token-badge-neutral {
+  background: rgba(8, 12, 18, 0.9);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f8fbff;
+}
+
+.map2-token-badge-value {
   background: rgba(8, 12, 18, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffdede;
-  font-size: 0.78rem;
-  line-height: 1;
-  font-weight: 900;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f8fbff;
 }
 
 .map2-token-core {
@@ -1109,10 +1138,34 @@ summary {
   border-color: #111111;
 }
 
+.map2-entity-player .map2-token-core {
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
 .map2-entity-enemy .map2-token {
   border-radius: 999px;
-  background: #111111;
-  border-color: #f2f2f2;
+  background:
+    radial-gradient(circle at 35% 30%, #3f4651 0%, #13171e 42%, #080b0f 100%);
+  border-color: #dbe7ff;
+  box-shadow:
+    0 0 0 1px rgba(214, 226, 255, 0.16),
+    0 0 16px rgba(9, 14, 20, 0.18);
+}
+
+.map2-entity-enemy-skull .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #f6f0d2 0%, #cfc7ae 34%, #4f4a3d 100%);
+  border-color: #30291d;
+  box-shadow:
+    0 0 0 1px rgba(255, 241, 189, 0.22),
+    0 0 16px rgba(84, 73, 42, 0.16);
+}
+
+.map2-entity-enemy-skull .map2-token-core {
+  color: #18140c;
+  text-shadow: none;
 }
 
 .map2-entity-ghost .map2-token {
@@ -1300,23 +1353,6 @@ summary {
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
-.map2-health {
-  left: 6px;
-  right: 6px;
-  bottom: 5px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-
-.map2-health-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #ffffff;
-}
-
 .map2-hint-move {
   box-shadow: inset 0 0 0 2px #ffffff;
 }
@@ -1334,8 +1370,7 @@ summary {
 }
 
 .map2-fog-hidden .map2-cell-pattern,
-.map2-fog-hidden .map2-token,
-.map2-fog-hidden .map2-health {
+.map2-fog-hidden .map2-token {
   opacity: 0;
 }
 
@@ -1349,20 +1384,16 @@ summary {
   opacity: 0;
 }
 
-.map2-fog-remembered .map2-health {
-  opacity: 0.7;
-}
-
-.map2-cell-wall {
+.map2-cell-hard-wall {
   box-shadow: inset 0 0 0 1px rgba(30, 30, 30, 0.45);
 }
 
-.map2-cell-room,
+.map2-cell-wall,
 .map2-cell-corridor {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
 }
 
-.map2-cell-room {
+.map2-cell-wall {
   outline: 1px solid rgba(0, 0, 0, 0.1);
   outline-offset: -1px;
 }
