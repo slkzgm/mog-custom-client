@@ -30,6 +30,7 @@ type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arro
 
 interface MapBoardV2Props {
   gameState: GameStateSnapshot;
+  moveEvents?: Record<string, unknown>[];
   onDirectionalAction?: (direction: MoveDirection) => void | Promise<void>;
   onPassAction?: () => void | Promise<void>;
   onPortalAction?: () => void | Promise<void>;
@@ -72,8 +73,72 @@ interface CellEntity {
   badges: EntityCornerBadge[];
 }
 
+interface ShroomTargetTile {
+  x: number;
+  y: number;
+  isMaxRange: boolean;
+}
+
+interface ShroomChargingEvent {
+  enemyId: string;
+  direction: MoveDirection;
+  shroomX: number;
+  shroomY: number;
+  targetTiles: ShroomTargetTile[];
+}
+
 function keyOf(x: number, y: number) {
   return `${x},${y}`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function parseShroomChargingEvents(events: Record<string, unknown>[]) {
+  const parsed: ShroomChargingEvent[] = [];
+
+  for (const event of events) {
+    const source = asRecord(event);
+    if (!source || source.type !== "shroom_charging") continue;
+
+    const enemyId = typeof source.enemyId === "string" ? source.enemyId : null;
+    const shroomX = typeof source.shroomX === "number" ? source.shroomX : null;
+    const shroomY = typeof source.shroomY === "number" ? source.shroomY : null;
+    const direction =
+      source.direction === "up" || source.direction === "down" || source.direction === "left" || source.direction === "right"
+        ? source.direction
+        : null;
+    const rawTiles = Array.isArray(source.targetTiles) ? source.targetTiles : [];
+
+    if (!enemyId || shroomX === null || shroomY === null || !direction) continue;
+
+    const targetTiles: ShroomTargetTile[] = rawTiles
+      .map((item) => {
+        const tile = asRecord(item);
+        if (!tile) return null;
+        const x = typeof tile.x === "number" ? tile.x : null;
+        const y = typeof tile.y === "number" ? tile.y : null;
+        if (x === null || y === null) return null;
+        return {
+          x,
+          y,
+          isMaxRange: tile.isMaxRange === true,
+        };
+      })
+      .filter((item): item is ShroomTargetTile => Boolean(item));
+
+    parsed.push({
+      enemyId,
+      direction,
+      shroomX,
+      shroomY,
+      targetTiles,
+    });
+  }
+
+  return parsed;
 }
 
 function matrixAt(matrix: number[][] | null, x: number, y: number): number | null {
@@ -528,6 +593,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
 
 export function MapBoardV2({
   gameState,
+  moveEvents = [],
   onDirectionalAction,
   onPassAction,
   onPortalAction,
@@ -606,13 +672,32 @@ export function MapBoardV2({
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     return findPortalAtPosition(gameState, x, y);
   }, [activeSelectedKey, gameState]);
+  const shroomChargingEvents = useMemo(() => parseShroomChargingEvents(moveEvents), [moveEvents]);
+  const shroomDangerTiles = useMemo(() => {
+    const tiles = new Map<string, ShroomTargetTile>();
+    for (const event of shroomChargingEvents) {
+      for (const tile of event.targetTiles) {
+        tiles.set(keyOf(tile.x, tile.y), tile);
+      }
+    }
+    return tiles;
+  }, [shroomChargingEvents]);
+  const selectedEnemyShroomCharge = useMemo(() => {
+    if (!selectedEnemy?.id) return null;
+    return shroomChargingEvents.find((event) => event.enemyId === selectedEnemy.id) ?? null;
+  }, [selectedEnemy, shroomChargingEvents]);
   const selectedEnemyNextMoveDirection = useMemo(
     () => (selectedEnemy ? predictEnemyNextMoveDirection(gameState, selectedEnemy) : null),
     [gameState, selectedEnemy],
   );
   const selectedEnemyIntentText = useMemo(
-    () => (selectedEnemy ? selectedEnemyIntent(gameState, selectedEnemy) : null),
-    [gameState, selectedEnemy],
+    () =>
+      selectedEnemyShroomCharge
+        ? `line attack ${selectedEnemyShroomCharge.direction}`
+        : selectedEnemy
+          ? selectedEnemyIntent(gameState, selectedEnemy)
+          : null,
+    [gameState, selectedEnemy, selectedEnemyShroomCharge],
   );
 
   if (!xValues.length || !yValues.length) {
@@ -688,6 +773,7 @@ export function MapBoardV2({
                 const currentEntity = resolveEntity(gameState, x, y);
                 const rememberedEntity = entityMemory.rememberedEntities.get(key);
                 const isVisited = visitedCells.visitedCoordinates.has(key);
+                const shroomDanger = shroomDangerTiles.get(key) ?? null;
                 const rawEntity =
                   currentEntity ?? (rememberedEntity && currentFog !== "visible" ? rememberedEntityToCellEntity(rememberedEntity) : null);
                 const entity =
@@ -718,6 +804,8 @@ export function MapBoardV2({
                       `map2-cell-${entity?.useWallSurface ? "wall" : tile}`,
                       `map2-fog-${fog}`,
                       isVisited ? "map2-cell-visited" : "",
+                      shroomDanger ? "map2-cell-shroom-danger" : "",
+                      shroomDanger?.isMaxRange ? "map2-cell-shroom-max-range" : "",
                       entity ? `map2-entity-${entity.accent}` : "",
                       hint ? `map2-hint-${hint.kind}` : "",
                       isSelected ? "is-selected" : "",
@@ -911,6 +999,20 @@ export function MapBoardV2({
                   <span>Intent</span>
                   <strong>{selectedEnemyIntentText ?? "-"}</strong>
                 </div>
+                {selectedEnemyShroomCharge ? (
+                  <>
+                    <div className="map2-kv">
+                      <span>Attack line</span>
+                      <strong>{selectedEnemyShroomCharge.direction}</strong>
+                    </div>
+                    <div className="map2-kv map2-kv-stack">
+                      <span>Threat tiles</span>
+                      <strong>
+                        {selectedEnemyShroomCharge.targetTiles.map((tile) => `${tile.x},${tile.y}`).join(" | ")}
+                      </strong>
+                    </div>
+                  </>
+                ) : null}
                 <div className="map2-kv">
                   <span>Next move</span>
                   <strong>{selectedEnemyNextMoveDirection ? intentArrow(selectedEnemyNextMoveDirection) : "-"}</strong>

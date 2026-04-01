@@ -27,6 +27,7 @@ export function GameplayPrototypeScreen() {
     <main className="gameplay-map-page">
       <MapBoardV2
         gameState={model.runState}
+        moveEvents={model.lastMoveEvents}
         onDirectionalAction={model.handleMove}
         onPassAction={model.handlePass}
         onPortalAction={model.portal.handleUsePortal}
