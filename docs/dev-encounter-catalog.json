@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-01T14:57:00.988Z",
+  "updatedAt": "2026-04-01T15:44:49.803Z",
   "entries": {
     "enemies": [
       {
@@ -8,9 +8,9 @@
         "category": "enemies",
         "displayName": "chaser (skeleton)",
         "type": "chaser",
-        "sightings": 3446,
+        "sightings": 3847,
         "firstSeenAt": "2026-03-31T19:48:27.496Z",
-        "lastSeenAt": "2026-04-01T14:57:00.493Z",
+        "lastSeenAt": "2026-04-01T15:44:45.765Z",
         "floors": [
           3,
           6,
@@ -52,9 +52,9 @@
         "category": "enemies",
         "displayName": "pattern (slime)",
         "type": "pattern",
-        "sightings": 3099,
+        "sightings": 3598,
         "firstSeenAt": "2026-03-31T19:52:50.193Z",
-        "lastSeenAt": "2026-04-01T14:56:55.790Z",
+        "lastSeenAt": "2026-04-01T15:44:49.803Z",
         "floors": [
           1,
           6,
@@ -88,9 +88,9 @@
         "category": "enemies",
         "displayName": "erratic (bat)",
         "type": "erratic",
-        "sightings": 1788,
+        "sightings": 2007,
         "firstSeenAt": "2026-03-31T19:48:28.371Z",
-        "lastSeenAt": "2026-04-01T14:56:49.746Z",
+        "lastSeenAt": "2026-04-01T15:44:49.803Z",
         "floors": [
           2,
           6,
@@ -125,9 +125,9 @@
         "category": "enemies",
         "displayName": "stationary (shroom)",
         "type": "stationary",
-        "sightings": 320,
+        "sightings": 345,
         "firstSeenAt": "2026-03-31T19:55:46.230Z",
-        "lastSeenAt": "2026-04-01T14:56:44.888Z",
+        "lastSeenAt": "2026-04-01T14:58:50.492Z",
         "floors": [
           7,
           8,
@@ -157,9 +157,9 @@
         "category": "enemies",
         "displayName": "wobble (kingslime)",
         "type": "wobble",
-        "sightings": 178,
+        "sightings": 221,
         "firstSeenAt": "2026-03-31T19:57:30.474Z",
-        "lastSeenAt": "2026-04-01T14:42:08.819Z",
+        "lastSeenAt": "2026-04-01T15:02:05.946Z",
         "floors": [
           8,
           9,
@@ -215,9 +215,9 @@
         "category": "interactive",
         "displayName": "pot",
         "type": "pot",
-        "sightings": 3698,
+        "sightings": 4355,
         "firstSeenAt": "2026-03-31T19:52:59.289Z",
-        "lastSeenAt": "2026-04-01T14:57:00.493Z",
+        "lastSeenAt": "2026-04-01T15:44:25.786Z",
         "floors": [
           2,
           6,
@@ -252,9 +252,9 @@
         "category": "interactive",
         "displayName": "crate",
         "type": "crate",
-        "sightings": 3142,
+        "sightings": 3643,
         "firstSeenAt": "2026-03-31T19:52:59.289Z",
-        "lastSeenAt": "2026-04-01T14:56:25.482Z",
+        "lastSeenAt": "2026-04-01T15:44:38.629Z",
         "floors": [
           1,
           6,
@@ -282,9 +282,9 @@
         "category": "interactive",
         "displayName": "portal",
         "type": "portal",
-        "sightings": 2766,
+        "sightings": 3204,
         "firstSeenAt": "2026-03-31T19:55:40.223Z",
-        "lastSeenAt": "2026-04-01T14:57:00.988Z",
+        "lastSeenAt": "2026-04-01T15:37:57.650Z",
         "floors": [
           3,
           4,
@@ -308,9 +308,9 @@
         "category": "interactive",
         "displayName": "stairs",
         "type": "stairs",
-        "sightings": 2364,
+        "sightings": 2797,
         "firstSeenAt": "2026-03-31T19:54:40.932Z",
-        "lastSeenAt": "2026-04-01T14:57:00.493Z",
+        "lastSeenAt": "2026-04-01T15:44:49.803Z",
         "floors": [
           1,
           2,
@@ -333,9 +333,9 @@
         "category": "interactive",
         "displayName": "fountain",
         "type": "fountain",
-        "sightings": 1732,
+        "sightings": 2155,
         "firstSeenAt": "2026-03-31T20:39:28.417Z",
-        "lastSeenAt": "2026-04-01T14:57:00.493Z",
+        "lastSeenAt": "2026-04-01T15:40:48.361Z",
         "floors": [
           1,
           3,
@@ -358,9 +358,9 @@
         "category": "interactive",
         "displayName": "rock",
         "type": "rock",
-        "sightings": 1516,
+        "sightings": 1718,
         "firstSeenAt": "2026-03-31T19:53:56.895Z",
-        "lastSeenAt": "2026-04-01T14:53:04.142Z",
+        "lastSeenAt": "2026-04-01T15:40:48.361Z",
         "floors": [
           2,
           4,
@@ -392,9 +392,9 @@
         "category": "interactive",
         "displayName": "chest",
         "type": "chest",
-        "sightings": 784,
+        "sightings": 800,
         "firstSeenAt": "2026-03-31T19:54:22.431Z",
-        "lastSeenAt": "2026-04-01T14:55:36.216Z",
+        "lastSeenAt": "2026-04-01T15:44:36.665Z",
         "floors": [
           2,
           3,
@@ -424,9 +424,9 @@
         "category": "pickups",
         "displayName": "small_energy_orb",
         "type": "small_energy_orb",
-        "sightings": 1900,
+        "sightings": 1975,
         "firstSeenAt": "2026-03-31T19:52:50.193Z",
-        "lastSeenAt": "2026-04-01T14:56:41.426Z",
+        "lastSeenAt": "2026-04-01T15:44:29.414Z",
         "floors": [
           1,
           6,
@@ -461,9 +461,9 @@
         "category": "pickups",
         "displayName": "marble",
         "type": "marble",
-        "sightings": 1587,
+        "sightings": 1652,
         "firstSeenAt": "2026-03-31T19:53:51.690Z",
-        "lastSeenAt": "2026-04-01T14:57:00.493Z",
+        "lastSeenAt": "2026-04-01T15:44:32.207Z",
         "floors": [
           2,
           3,
@@ -489,50 +489,13 @@
         "isRevealedStates": []
       },
       {
-        "key": "large_energy_orb",
-        "category": "pickups",
-        "displayName": "large_energy_orb",
-        "type": "large_energy_orb",
-        "sightings": 1076,
-        "firstSeenAt": "2026-03-31T19:52:54.882Z",
-        "lastSeenAt": "2026-04-01T14:56:56.583Z",
-        "floors": [
-          1,
-          2,
-          6,
-          7,
-          8,
-          9
-        ],
-        "sampleIds": [
-          "enemy_loot_enemy_5_425",
-          "enemy_loot_enemy_11_426",
-          "enemy_loot_enemy_3_432",
-          "enemy_loot_enemy_15_464",
-          "chest_loot_chest_9_1",
-          "pot_loot_pot_6"
-        ],
-        "sampleSpriteTypes": [],
-        "sampleValues": [
-          17,
-          18,
-          19,
-          20,
-          22,
-          23
-        ],
-        "sampleDamage": [],
-        "sampleTileIndices": [],
-        "isRevealedStates": []
-      },
-      {
         "key": "treasure",
         "category": "pickups",
         "displayName": "treasure",
         "type": "treasure",
-        "sightings": 1038,
+        "sightings": 1224,
         "firstSeenAt": "2026-03-31T19:53:06.902Z",
-        "lastSeenAt": "2026-04-01T14:56:50.061Z",
+        "lastSeenAt": "2026-04-01T15:44:43.227Z",
         "floors": [
           1,
           6,
@@ -561,6 +524,43 @@
         "sampleDamage": [],
         "sampleTileIndices": [],
         "isRevealedStates": []
+      },
+      {
+        "key": "large_energy_orb",
+        "category": "pickups",
+        "displayName": "large_energy_orb",
+        "type": "large_energy_orb",
+        "sightings": 1120,
+        "firstSeenAt": "2026-03-31T19:52:54.882Z",
+        "lastSeenAt": "2026-04-01T15:44:39.348Z",
+        "floors": [
+          1,
+          2,
+          6,
+          7,
+          8,
+          9
+        ],
+        "sampleIds": [
+          "enemy_loot_enemy_5_425",
+          "enemy_loot_enemy_11_426",
+          "enemy_loot_enemy_3_432",
+          "enemy_loot_enemy_15_464",
+          "chest_loot_chest_9_1",
+          "pot_loot_pot_6"
+        ],
+        "sampleSpriteTypes": [],
+        "sampleValues": [
+          17,
+          18,
+          19,
+          20,
+          22,
+          23
+        ],
+        "sampleDamage": [],
+        "sampleTileIndices": [],
+        "isRevealedStates": []
       }
     ],
     "traps": [
@@ -569,9 +569,9 @@
         "category": "traps",
         "displayName": "spike",
         "type": "spike",
-        "sightings": 925,
+        "sightings": 1026,
         "firstSeenAt": "2026-03-31T19:53:02.084Z",
-        "lastSeenAt": "2026-04-01T14:56:46.011Z",
+        "lastSeenAt": "2026-04-01T15:44:48.321Z",
         "floors": [
           2,
           3,
@@ -607,9 +607,9 @@
         "category": "portals",
         "displayName": "portal",
         "type": "portal",
-        "sightings": 583,
+        "sightings": 668,
         "firstSeenAt": "2026-03-31T19:55:52.830Z",
-        "lastSeenAt": "2026-04-01T14:57:00.988Z",
+        "lastSeenAt": "2026-04-01T15:36:42.029Z",
         "floors": [
           3,
           4,
@@ -632,9 +632,9 @@
         "category": "torches",
         "displayName": "torch",
         "type": "torch",
-        "sightings": 6255,
+        "sightings": 7299,
         "firstSeenAt": "2026-03-31T19:48:01.463Z",
-        "lastSeenAt": "2026-04-01T14:57:00.988Z",
+        "lastSeenAt": "2026-04-01T15:44:49.803Z",
         "floors": [
           1,
           6,
