@@ -1,4 +1,5 @@
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "./game.types";
+import { interactiveSymbol } from "./map-interactive-visuals";
 
 interface MoveDelta {
   dx: number;
@@ -52,12 +53,7 @@ function toTwoDigits(value: number): string {
 }
 
 function interactiveToChar(entity: MapEntitySnapshot): string {
-  if (entity.type === "stairs") return ">";
-  if (entity.type === "fountain") return "F";
-  if (entity.type === "crate") return "C";
-  if (entity.type === "pot") return "P";
-  if (entity.type === "door") return "D";
-  return "I";
+  return interactiveSymbol(entity);
 }
 
 function normalizeInteractiveType(type: string): string {
@@ -142,7 +138,6 @@ export function buildAsciiMap(gameState: GameStateSnapshot): string[] {
 
   const enemiesByPosition = toEntityLookup(gameState.enemies);
   const interactiveByPosition = toEntityLookup(gameState.interactive);
-  const torchesByPosition = toEntityLookup(gameState.torches);
   const portalsByPosition = toEntityLookup(gameState.portals);
   const pickupsByPosition = toEntityLookup(gameState.pickups);
   const trapsByPosition = toEntityLookup(gameState.traps);
@@ -203,11 +198,6 @@ export function buildAsciiMap(gameState: GameStateSnapshot): string[] {
 
       if (portalsByPosition.has(key)) {
         renderedRow += "O ";
-        continue;
-      }
-
-      if (torchesByPosition.has(key)) {
-        renderedRow += "T ";
         continue;
       }
 

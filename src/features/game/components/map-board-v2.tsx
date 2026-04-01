@@ -9,18 +9,20 @@ import {
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
+import { resolveInteractiveVisual } from "../map-interactive-visuals";
 import type { GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 import { useEncounterCatalog } from "../runtime/use-encounter-catalog";
 import type { RememberedEntity } from "../runtime/map-entity-memory";
 import { useMapEntityMemory } from "../runtime/use-map-entity-memory";
 import { useMapFogMemory } from "../runtime/use-map-fog-memory";
 import { useMapSnapshotProbe } from "../runtime/use-map-snapshot-probe";
+import { useMapVisitedCells } from "../runtime/use-map-visited-cells";
 import { appConfig } from "../../../app/config";
 
 type FogState = "hidden" | "explored" | "visible" | "remembered";
 type TileKind = "wall" | "room" | "corridor" | "unknown" | "void";
 type HintKind = "move" | "attack" | "break" | "blocked";
-type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arrow-trap" | "portal" | "torch";
+type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arrow-trap" | "portal";
 
 interface MapBoardV2Props {
   gameState: GameStateSnapshot;
@@ -58,6 +60,8 @@ interface CellEntity {
   token: string;
   accent: string;
   hpRatio: number | null;
+  showToken: boolean;
+  useWallSurface: boolean;
 }
 
 function keyOf(x: number, y: number) {
@@ -168,15 +172,6 @@ function toLookup<T extends { x: number; y: number }>(items: T[]) {
   return lookup;
 }
 
-function interactiveToken(entity: MapEntitySnapshot) {
-  const type = entity.type.trim().toLowerCase();
-  if (type === "stairs") return { token: ">", accent: "gold", label: "Stairs" };
-  if (type === "fountain") return { token: "F", accent: "cyan", label: "Fountain" };
-  if (type === "crate" || type === "pot") return { token: "B", accent: "brown", label: "Breakable" };
-  if (type === "door") return { token: "D", accent: "slate", label: "Door" };
-  return { token: "I", accent: "gold", label: entity.type };
-}
-
 function pickupToken(entity: MapEntitySnapshot) {
   const type = entity.type.trim().toLowerCase();
   if (type.includes("energy")) return { token: "+", accent: "lime", label: "Energy" };
@@ -185,23 +180,17 @@ function pickupToken(entity: MapEntitySnapshot) {
   return { token: "+", accent: "lime", label: entity.type };
 }
 
-function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity {
+function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | null {
   if (entity.kind === "interactive") {
-    const token = interactiveToken({
-      x: entity.x,
-      y: entity.y,
-      type: entity.type,
-      id: entity.id,
-      value: entity.value,
-      damage: entity.damage,
-      tileIndex: null,
-    });
+    const token = resolveInteractiveVisual(entity.type);
     return {
       kind: "interactive",
       label: token.label,
       token: token.token,
       accent: token.accent,
       hpRatio: null,
+      showToken: token.showToken,
+      useWallSurface: token.useWallSurface,
     };
   }
 
@@ -221,6 +210,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity {
       token: token.token,
       accent: token.accent,
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -231,6 +222,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity {
       token: "^",
       accent: "trap",
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -241,6 +234,8 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity {
       token: "^",
       accent: "trap",
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -251,16 +246,12 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity {
       token: "O",
       accent: "portal",
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
-  return {
-    kind: "torch",
-    label: entity.type,
-    token: "*",
-    accent: "torch",
-    hpRatio: null,
-  };
+  return null;
 }
 
 function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): CellEntity | null {
@@ -272,6 +263,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       token: "@",
       accent: "player",
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -285,18 +278,22 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       token: isGhostEnemy(enemy) ? "G" : "!",
       accent: isGhostEnemy(enemy) ? "ghost" : "enemy",
       hpRatio: ratio,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
   const interactive = gameState.interactive.find((item) => item.x === x && item.y === y);
   if (interactive) {
-    const token = interactiveToken(interactive);
+    const token = resolveInteractiveVisual(interactive);
     return {
       kind: "interactive",
       label: token.label,
       token: token.token,
       accent: token.accent,
       hpRatio: null,
+      showToken: token.showToken,
+      useWallSurface: token.useWallSurface,
     };
   }
 
@@ -309,6 +306,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       token: token.token,
       accent: token.accent,
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -320,6 +319,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       token: "^",
       accent: "trap",
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -331,6 +332,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       token: "^",
       accent: "trap",
       hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -342,17 +345,8 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       token: "O",
       accent: "portal",
       hpRatio: null,
-    };
-  }
-
-  const torch = gameState.torches.find((item) => item.x === x && item.y === y);
-  if (torch) {
-    return {
-      kind: "torch",
-      label: torch.type,
-      token: "*",
-      accent: "torch",
-      hpRatio: null,
+      showToken: true,
+      useWallSurface: false,
     };
   }
 
@@ -376,10 +370,12 @@ export function MapBoardV2({
   const isEncounterCatalogEnabled = appConfig.features.encounterCatalog;
   const isMapFogMemoryEnabled = appConfig.features.mapFogMemory;
   const isMapSnapshotProbeEnabled = appConfig.features.mapSnapshotProbe;
+  const isMapVisitedCellsEnabled = appConfig.features.mapVisitedCells;
   const encounterCatalog = useEncounterCatalog(gameState, isEncounterCatalogEnabled);
   const entityMemory = useMapEntityMemory(gameState, isMapFogMemoryEnabled);
   const fogMemory = useMapFogMemory(gameState, isMapFogMemoryEnabled);
   const mapSnapshotProbe = useMapSnapshotProbe(gameState, isMapSnapshotProbeEnabled);
+  const visitedCells = useMapVisitedCells(gameState, isMapVisitedCellsEnabled);
 
   const effectiveFocusOffset = useMemo(
     () => (focusOffsetState.turnKey === currentTurnKey ? focusOffsetState.offset : { x: 0, y: 0 }),
@@ -496,6 +492,7 @@ export function MapBoardV2({
                 const tile = tileKindAt(gameState, x, y);
                 const currentEntity = resolveEntity(gameState, x, y);
                 const rememberedEntity = entityMemory.rememberedEntities.get(key);
+                const isVisited = visitedCells.visitedCoordinates.has(key);
                 const entity =
                   currentEntity ?? (rememberedEntity && currentFog !== "visible" ? rememberedEntityToCellEntity(rememberedEntity) : null);
                 const hint = hintsByKey.get(key) ?? null;
@@ -510,8 +507,9 @@ export function MapBoardV2({
                     type="button"
                     className={[
                       "map2-cell",
-                      `map2-cell-${tile}`,
+                      `map2-cell-${entity?.useWallSurface ? "wall" : tile}`,
                       `map2-fog-${fog}`,
+                      isVisited ? "map2-cell-visited" : "",
                       entity ? `map2-entity-${entity.accent}` : "",
                       hint ? `map2-hint-${hint.kind}` : "",
                       isSelected ? "is-selected" : "",
@@ -536,7 +534,7 @@ export function MapBoardV2({
                   >
                     <span className="map2-cell-base" />
                     {fog !== "hidden" ? <span className="map2-cell-pattern" /> : null}
-                    {entity && fog !== "hidden" ? (
+                    {entity && entity.showToken && fog !== "hidden" ? (
                       <span className="map2-token">
                         <span className="map2-token-core">{entity.token}</span>
                       </span>
@@ -557,6 +555,37 @@ export function MapBoardV2({
         </div>
 
         <aside className="map2-sidebar">
+          {isMapVisitedCellsEnabled ? (
+            <div className="map2-card">
+              <div className="map2-card-header">
+                <div>
+                  <p className="panel-eyebrow">Pathing</p>
+                  <h3>Visited cells</h3>
+                </div>
+                <span className="map2-verdict-pill map2-verdict-pill-likely-global">active</span>
+              </div>
+              <div className="map2-kv">
+                <span>Visited tiles</span>
+                <strong>{visitedCells.visitedCount}</strong>
+              </div>
+              <div className="map2-kv">
+                <span>Stored floors</span>
+                <strong>{visitedCells.visitedFloorCount}</strong>
+              </div>
+              <p className="map2-card-note">
+                A subtle trail marks the cells you already crossed so backtracking is easier and safer around hidden traps.
+              </p>
+              <div className="panel-actions">
+                <button type="button" onClick={visitedCells.resetCurrentFloor}>
+                  Reset floor trail
+                </button>
+                <button type="button" onClick={visitedCells.resetAll}>
+                  Reset all trail
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {viewMode === "focus" ? (
             <div className="map2-card">
               <p className="panel-eyebrow">Focus</p>

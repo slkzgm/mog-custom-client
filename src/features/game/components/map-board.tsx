@@ -9,11 +9,12 @@ import {
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
+import { interactiveSymbol } from "../map-interactive-visuals";
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 
 type FogState = "hidden" | "explored" | "visible";
 type CellHintType = "attack" | "break" | "move" | "blocked";
-type CellEntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arrow-trap" | "portal" | "torch";
+type CellEntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arrow-trap" | "portal";
 
 type MapLookup<T> = Map<string, T>;
 
@@ -77,17 +78,6 @@ function toLookup<T extends { x: number; y: number }>(items: T[]): MapLookup<T> 
 
 function asTwoDigits(value: number): string {
   return String(value).padStart(2, "0");
-}
-
-function interactiveSymbol(entity: MapEntitySnapshot): string {
-  const type = entity.type.trim().toLowerCase();
-  if (type === "stairs") return ">";
-  if (type === "chest") return "H";
-  if (type === "fountain") return "F";
-  if (type === "crate") return "C";
-  if (type === "pot") return "P";
-  if (type === "door") return "D";
-  return "I";
 }
 
 function tileLabel(tile: number | null): string {
@@ -158,7 +148,6 @@ function entityTokenSymbol(kind: CellEntityKind | null, symbol: string): string 
   if (kind === "pickup") return "+";
   if (kind === "trap" || kind === "arrow-trap") return "^";
   if (kind === "portal") return "O";
-  if (kind === "torch") return "*";
   return symbol;
 }
 
@@ -271,7 +260,6 @@ function resolveEntityData(params: {
   trapsByKey: MapLookup<MapEntitySnapshot>;
   arrowTrapsByKey: MapLookup<MapEntitySnapshot>;
   portalsByKey: MapLookup<MapEntitySnapshot>;
-  torchesByKey: MapLookup<MapEntitySnapshot>;
 }): {
   symbol: string;
   entityKind: CellEntityKind | null;
@@ -386,19 +374,6 @@ function resolveEntityData(params: {
     };
   }
 
-  const torch = params.torchesByKey.get(params.key);
-  if (torch) {
-    const idBadge = shortIdBadge(torch.id);
-    return {
-      symbol: "T",
-      entityKind: "torch",
-      entityType: torch.type,
-      entityId: torch.id,
-      enemyHp: null,
-      badges: [idBadge].filter((value): value is string => Boolean(value)),
-    };
-  }
-
   return {
     symbol: "",
     entityKind: null,
@@ -429,7 +404,6 @@ export function MapBoard({
   const trapsByKey = useMemo(() => toLookup(gameState.traps), [gameState.traps]);
   const arrowTrapsByKey = useMemo(() => toLookup(gameState.arrowTraps), [gameState.arrowTraps]);
   const portalsByKey = useMemo(() => toLookup(gameState.portals), [gameState.portals]);
-  const torchesByKey = useMemo(() => toLookup(gameState.torches), [gameState.torches]);
 
   const xValues = useMemo(() => {
     if (viewport.maxX < viewport.minX) return [];
@@ -499,7 +473,6 @@ export function MapBoard({
       trapsByKey,
       arrowTrapsByKey,
       portalsByKey,
-      torchesByKey,
     });
 
     return {
@@ -529,7 +502,6 @@ export function MapBoard({
     interactiveByKey,
     pickupsByKey,
     portalsByKey,
-    torchesByKey,
     trapsByKey,
   ]);
 
@@ -579,8 +551,8 @@ export function MapBoard({
           <details className="map-board-help">
             <summary>Legend & controls</summary>
             <p className="map-board-legend">
-              Legend: @ player, E enemy, G ghost, &gt; stairs, H chest, F fountain, C crate, P pot, I interactive, $ pickup, ^ trap,
-              A arrow trap, O portal, T torch, # wall, . room, : corridor.
+              Legend: @ player, E enemy, G ghost, &gt; stairs, C chest, F fountain, B breakable, I interactive, $ pickup, ^ trap,
+              A arrow trap, O portal, # wall, . room, : corridor.
             </p>
             <p className="map-board-legend">
               Adjacent action hints: green=move, orange=break, red=attack, gray=blocked.
@@ -631,7 +603,6 @@ export function MapBoard({
                     trapsByKey,
                     arrowTrapsByKey,
                     portalsByKey,
-                    torchesByKey,
                   });
 
                   const symbol = entity.symbol || (fog === "hidden" ? "" : tileSymbol(tileValue));

@@ -938,6 +938,13 @@ summary {
   inset: 0;
 }
 
+.map2-cell-base::before,
+.map2-cell-base::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
 .map2-cell-wall .map2-cell-base {
   background: #555555;
 }
@@ -956,6 +963,21 @@ summary {
 
 .map2-cell-void .map2-cell-base {
   background: #020304;
+}
+
+.map2-cell-visited .map2-cell-base::before {
+  inset: 0;
+  background: rgba(92, 152, 108, 0.18);
+}
+
+.map2-cell-visited .map2-cell-base::after {
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(210, 248, 214, 0.82);
+  box-shadow: 0 0 0 1px rgba(30, 66, 38, 0.28);
 }
 
 .map2-fog-hidden .map2-cell-base {
@@ -998,16 +1020,18 @@ summary {
 .map2-token-core {
   font-size: 1rem;
   font-weight: 800;
+  letter-spacing: 0.04em;
   color: #fff;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
 }
 
 .map2-entity-player .map2-token-core,
-.map2-entity-gold .map2-token-core,
-.map2-entity-cyan .map2-token-core,
+.map2-entity-stairs .map2-token-core,
+.map2-entity-fountain .map2-token-core,
 .map2-entity-portal .map2-token-core,
 .map2-entity-lime .map2-token-core,
-.map2-entity-torch .map2-token-core {
+.map2-entity-torch .map2-token-core,
+.map2-entity-chest .map2-token-core {
   color: #111111;
   text-shadow: none;
 }
@@ -1030,23 +1054,65 @@ summary {
   border-color: #f2f2f2;
 }
 
-.map2-entity-gold .map2-token {
-  background: #d9d9d9;
-  border-color: #2a2a2a;
+.map2-entity-stairs .map2-token {
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #fff4a3 0%, #e0b84f 100%);
+  border-color: #46310a;
+  box-shadow:
+    0 0 0 1px rgba(255, 243, 182, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.28);
 }
 
-.map2-entity-cyan .map2-token,
+.map2-entity-fountain .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #eaffff 0%, #bff6ff 28%, #66d5ef 62%, #1b6f8c 100%);
+  border-color: #08374a;
+  box-shadow:
+    0 0 0 1px rgba(170, 245, 255, 0.3),
+    0 0 18px rgba(90, 224, 247, 0.22);
+}
+
+.map2-entity-breakable .map2-token {
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, #9b7750 0%, #6d4d2d 100%);
+  border-color: #f2d3ab;
+  box-shadow:
+    inset 0 0 0 1px rgba(37, 22, 10, 0.28),
+    0 6px 14px rgba(0, 0, 0, 0.26);
+}
+
+.map2-entity-chest .map2-token {
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #ffe6a3 0%, #c6902d 100%);
+  border-color: #3f2a0a;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 245, 199, 0.3),
+    0 6px 14px rgba(0, 0, 0, 0.28);
+}
+
 .map2-entity-portal .map2-token {
-  background: #d9d9d9;
-  border-color: #2a2a2a;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(8, 10, 16, 0.96) 0 34%, #6bf5ff 35% 48%, #101824 49% 62%, #e59dff 63% 76%, #111723 77% 100%);
+  border-color: #d7d2ff;
+  box-shadow:
+    0 0 0 1px rgba(186, 241, 255, 0.28),
+    0 0 20px rgba(172, 119, 255, 0.2);
 }
 
-.map2-entity-brown .map2-token {
-  background: #7a7a7a;
-  border-color: #f2f2f2;
+.map2-entity-rock.map2-cell-wall .map2-cell-base {
+  background:
+    linear-gradient(180deg, #5d5d5d 0%, #4a4a4a 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 15, 15, 0.48),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.03);
 }
 
-.map2-entity-slate .map2-token {
+.map2-entity-interactive .map2-token {
   background: #7a7a7a;
   border-color: #f2f2f2;
 }
@@ -1067,6 +1133,20 @@ summary {
   border-radius: 999px;
   background: #d9d9d9;
   border-color: #2a2a2a;
+}
+
+.map2-entity-breakable .map2-token-core {
+  color: #fff5e8;
+}
+
+.map2-entity-chest .map2-token-core,
+.map2-entity-stairs .map2-token-core {
+  font-size: 1.02rem;
+}
+
+.map2-entity-portal .map2-token-core {
+  color: #f4f7ff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
 .map2-health {
@@ -1111,6 +1191,11 @@ summary {
 .map2-fog-remembered .map2-cell-base,
 .map2-fog-remembered .map2-token {
   opacity: 0.92;
+}
+
+.map2-fog-hidden.map2-cell-visited .map2-cell-base::before,
+.map2-fog-hidden.map2-cell-visited .map2-cell-base::after {
+  opacity: 0;
 }
 
 .map2-fog-remembered .map2-health {

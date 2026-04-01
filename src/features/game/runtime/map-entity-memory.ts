@@ -1,6 +1,6 @@
-import type { GameStateSnapshot, MapEntitySnapshot, TorchSnapshot } from "../game.types";
+import type { GameStateSnapshot, MapEntitySnapshot } from "../game.types";
 
-export type RememberedEntityKind = "interactive" | "pickup" | "trap" | "arrow-trap" | "portal" | "torch";
+export type RememberedEntityKind = "interactive" | "pickup" | "trap" | "arrow-trap" | "portal";
 
 export interface RememberedEntity {
   key: string;
@@ -43,7 +43,7 @@ function coordKeyOf(x: number, y: number) {
 function rememberEntity(
   floorKey: string,
   kind: RememberedEntityKind,
-  entity: MapEntitySnapshot | TorchSnapshot,
+  entity: MapEntitySnapshot,
 ): RememberedEntity {
   const coordKey = coordKeyOf(entity.x, entity.y);
   return {
@@ -57,7 +57,7 @@ function rememberEntity(
     id: entity.id,
     value: entity.value,
     damage: entity.damage,
-    isRevealed: "isRevealed" in entity ? entity.isRevealed : null,
+    isRevealed: null,
     lastSeenAt: new Date().toISOString(),
   };
 }
@@ -84,7 +84,7 @@ export function rememberVisibleEntities(state: MapEntityMemoryState, gameState: 
 
   const visitEntity = (
     kind: RememberedEntityKind,
-    entity: MapEntitySnapshot | TorchSnapshot,
+    entity: MapEntitySnapshot,
   ) => {
     if (!isVisible(gameState, entity.x, entity.y)) return;
     const coordKey = coordKeyOf(entity.x, entity.y);
@@ -118,7 +118,6 @@ export function rememberVisibleEntities(state: MapEntityMemoryState, gameState: 
   for (const entity of gameState.traps) visitEntity("trap", entity);
   for (const entity of gameState.arrowTraps) visitEntity("arrow-trap", entity);
   for (const entity of gameState.portals) visitEntity("portal", entity);
-  for (const entity of gameState.torches) visitEntity("torch", entity);
 
   const mapHeight = gameState.fogMask?.length ?? 0;
   const mapWidth = gameState.fogMask?.[0]?.length ?? 0;

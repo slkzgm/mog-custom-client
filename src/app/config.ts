@@ -5,6 +5,7 @@ const envSchema = z.object({
   VITE_ENABLE_ENCOUNTER_CATALOG: z.string().optional(),
   VITE_ENABLE_MAP_FOG_MEMORY: z.string().optional(),
   VITE_ENABLE_MAP_SNAPSHOT_PROBE: z.string().optional(),
+  VITE_ENABLE_MAP_VISITED_CELLS: z.string().optional(),
   VITE_PUSHER_APP_KEY: z.string().min(1).optional(),
   VITE_PUSHER_CLUSTER: z.string().min(1).optional(),
   VITE_PUSHER_CHANNEL: z.string().min(1).optional(),
@@ -82,6 +83,7 @@ export const appConfig = {
     encounterCatalog: parseFeatureFlag(env.VITE_ENABLE_ENCOUNTER_CATALOG, import.meta.env.DEV),
     mapFogMemory: parseFeatureFlag(env.VITE_ENABLE_MAP_FOG_MEMORY, true),
     mapSnapshotProbe: parseFeatureFlag(env.VITE_ENABLE_MAP_SNAPSHOT_PROBE, import.meta.env.DEV),
+    mapVisitedCells: parseFeatureFlag(env.VITE_ENABLE_MAP_VISITED_CELLS, true),
   },
   pusher: {
     appKey: env.VITE_PUSHER_APP_KEY ?? "d21f2a24538872113358",
