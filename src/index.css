@@ -979,6 +979,21 @@ summary {
   box-shadow: 0 0 0 1px rgba(30, 66, 38, 0.28);
 }
 
+.map2-cell-portal-prompt .map2-cell-base::before {
+  inset: 0;
+  background: rgba(118, 214, 255, 0.12);
+}
+
+.map2-cell-portal-prompt .map2-cell-base::after {
+  inset: 3px;
+  border: 2px solid rgba(148, 230, 255, 0.72);
+  border-radius: 6px;
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(31, 111, 145, 0.16),
+    0 0 14px rgba(82, 221, 255, 0.12);
+}
+
 .map2-cell-shroom-danger .map2-cell-base::before {
   inset: 0;
   background: rgba(168, 84, 84, 0.18);
@@ -1111,6 +1126,36 @@ summary {
   color: #f8fbff;
 }
 
+.map2-token-badge-warning {
+  background: rgba(36, 61, 72, 0.94);
+  border-color: rgba(178, 235, 255, 0.34);
+  color: #e9fbff;
+}
+
+.map2-token-badge-energy {
+  background: rgba(90, 71, 5, 0.92);
+  border-color: rgba(255, 233, 120, 0.32);
+  color: #fff9d9;
+}
+
+.map2-token-badge-treasure {
+  background: rgba(74, 49, 4, 0.92);
+  border-color: rgba(255, 230, 166, 0.32);
+  color: #fff4d0;
+}
+
+.map2-token-badge-marble {
+  background: rgba(17, 63, 29, 0.92);
+  border-color: rgba(186, 255, 196, 0.32);
+  color: #e9ffec;
+}
+
+.map2-token-badge-jackpot {
+  background: rgba(71, 32, 92, 0.95);
+  border-color: rgba(246, 210, 255, 0.34);
+  color: #fff0ff;
+}
+
 .map2-token-badge-value {
   background: rgba(8, 12, 18, 0.86);
   border-color: rgba(255, 255, 255, 0.18);
@@ -1170,6 +1215,21 @@ summary {
 
 .map2-entity-enemy-skull .map2-token-core {
   color: #18140c;
+  text-shadow: none;
+}
+
+.map2-entity-enemy-jackpot .map2-token {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #fff7d5 0%, #f0d476 28%, #8f56ff 72%, #32185b 100%);
+  border-color: #fff0bd;
+  box-shadow:
+    0 0 0 1px rgba(255, 239, 176, 0.26),
+    0 0 20px rgba(172, 98, 255, 0.24);
+}
+
+.map2-entity-enemy-jackpot .map2-token-core {
+  color: #23122e;
   text-shadow: none;
 }
 
@@ -1312,24 +1372,6 @@ summary {
 
 .map2-entity-pickup-marble .map2-token::before {
   content: "M";
-}
-
-.map2-entity-pickup-energy .map2-token-badge {
-  background: rgba(90, 71, 5, 0.92);
-  border-color: rgba(255, 233, 120, 0.32);
-  color: #fff9d9;
-}
-
-.map2-entity-pickup-treasure .map2-token-badge {
-  background: rgba(74, 49, 4, 0.92);
-  border-color: rgba(255, 230, 166, 0.32);
-  color: #fff4d0;
-}
-
-.map2-entity-pickup-marble .map2-token-badge {
-  background: rgba(17, 63, 29, 0.92);
-  border-color: rgba(186, 255, 196, 0.32);
-  color: #e9ffec;
 }
 
 .map2-entity-violet .map2-token,

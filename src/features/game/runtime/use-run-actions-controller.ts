@@ -36,6 +36,7 @@ export function useRunActionsController(
     | "canEstimateNextRerollCost"
     | "pendingUpgradeOptions"
     | "isRefreshDisabled"
+    | "runtimeState"
   >,
 ) {
   const runMoveMutation = useRunMoveMutation();
@@ -89,6 +90,28 @@ export function useRunActionsController(
     [runSession],
   );
 
+  const findDirectionalPortalTarget = useCallback(
+    (gameState: GameStateSnapshot, direction: MoveDirection) => {
+      const player = gameState.player;
+      if (!player) return null;
+
+      const currentPortal = findPortalAtPosition(gameState, player.x, player.y);
+      if (!currentPortal) return null;
+
+      const target = getMoveTarget(gameState, direction);
+      if (!target) return null;
+
+      const targetPortal = findPortalAtPosition(gameState, target.targetX, target.targetY);
+      if (!targetPortal) return null;
+
+      const latestPortalPrompt = runSession.runtimeState.portalPrompt;
+      if (!latestPortalPrompt) return null;
+
+      return latestPortalPrompt.portalX === target.targetX && latestPortalPrompt.portalY === target.targetY ? targetPortal : null;
+    },
+    [runSession.runtimeState.portalPrompt],
+  );
+
   const validateMove = useCallback(
     (direction: MoveDirection): string | null => {
       if (!runSession.moveRunId) return "No active run id.";
@@ -97,6 +120,9 @@ export function useRunActionsController(
 
       const target = getMoveTarget(runSession.effectiveGameState, direction);
       if (!target) return "Player position unavailable.";
+
+      const portalTarget = findDirectionalPortalTarget(runSession.effectiveGameState, direction);
+      if (portalTarget) return null;
 
       const enemyOnTarget = findEnemyAtPosition(runSession.effectiveGameState, target.targetX, target.targetY);
       if (enemyOnTarget) {
@@ -130,7 +156,7 @@ export function useRunActionsController(
 
       return null;
     },
-    [runSession],
+    [findDirectionalPortalTarget, runSession],
   );
 
   const validatePass = useCallback((): string | null => {
@@ -159,6 +185,11 @@ export function useRunActionsController(
       const target = getMoveTarget(runSession.effectiveGameState, direction);
       if (!target) return "Move";
 
+      const portalTarget = findDirectionalPortalTarget(runSession.effectiveGameState, direction);
+      if (portalTarget) {
+        return portalTarget.id ? `Use portal ${portalTarget.id}` : "Use portal";
+      }
+
       const enemyOnTarget = findEnemyAtPosition(runSession.effectiveGameState, target.targetX, target.targetY);
       if (enemyOnTarget) {
         if (!isAttackableEnemy(enemyOnTarget)) {
@@ -178,7 +209,7 @@ export function useRunActionsController(
 
       return `Move to (${target.targetX},${target.targetY})`;
     },
-    [runSession],
+    [findDirectionalPortalTarget, runSession],
   );
 
   const handleMove = useCallback(
@@ -186,6 +217,19 @@ export function useRunActionsController(
       await runQueuedRuntimeAction(`move:${direction}`, async ({ queuedState, queuedRunId }) => {
         const target = getMoveTarget(queuedState, direction);
         if (!target) return;
+
+        const portalTarget = findDirectionalPortalTarget(queuedState, direction);
+        if (portalTarget) {
+          const result = await runTeleportMutation.mutateAsync({
+            runId: queuedRunId,
+          });
+
+          if (result.gameState) {
+            runSession.runtimeState.replaceLocalGameState(result.gameState);
+          }
+          runSession.runtimeState.replaceLastMoveEvents(result.events);
+          return;
+        }
 
         const enemyOnTarget = findEnemyAtPosition(queuedState, target.targetX, target.targetY);
         if (enemyOnTarget && !isAttackableEnemy(enemyOnTarget)) return;
@@ -218,7 +262,7 @@ export function useRunActionsController(
         runSession.runtimeState.replaceLastMoveEvents(result.events);
       });
     },
-    [runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState],
+    [findDirectionalPortalTarget, runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState, runTeleportMutation],
   );
 
   const handlePass = useCallback(async () => {
@@ -302,7 +346,7 @@ export function useRunActionsController(
     [runSession, selectUpgradeMutation],
   );
 
-  const hotkeysDisabled = !runSession.moveRunId || !runSession.effectiveGameState || runSession.hasPendingUpgradeSelection || isAnyActionPending;
+  const hotkeysDisabled = !runSession.moveRunId || !runSession.effectiveGameState || isAnyActionPending;
   const isRefreshDisabled = useMemo(
     () =>
       runSession.isRefreshDisabled ||

@@ -14,7 +14,7 @@ import type { EntityCornerBadge } from "../map-enemy-visuals";
 import { isSkullEnemySprite, resolveEnemyVisual } from "../map-enemy-visuals";
 import { interactiveValueText, isRockInteractive, resolveInteractiveVisual } from "../map-interactive-visuals";
 import { pickupValueText, resolvePickupVisual } from "../map-pickup-visuals";
-import type { GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
+import type { GameStateSnapshot, MoveDirection } from "../game.types";
 import { useEncounterCatalog } from "../runtime/use-encounter-catalog";
 import type { RememberedEntity } from "../runtime/map-entity-memory";
 import { useMapEntityMemory } from "../runtime/use-map-entity-memory";
@@ -31,6 +31,7 @@ type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" | "arro
 interface MapBoardV2Props {
   gameState: GameStateSnapshot;
   moveEvents?: Record<string, unknown>[];
+  portalPrompt?: PortalPromptEvent | null;
   onDirectionalAction?: (direction: MoveDirection) => void | Promise<void>;
   onPassAction?: () => void | Promise<void>;
   onPortalAction?: () => void | Promise<void>;
@@ -71,6 +72,7 @@ interface CellEntity {
   showToken: boolean;
   useWallSurface: boolean;
   badges: EntityCornerBadge[];
+  isPortalPromptActive?: boolean;
 }
 
 interface ShroomTargetTile {
@@ -85,6 +87,17 @@ interface ShroomChargingEvent {
   shroomX: number;
   shroomY: number;
   targetTiles: ShroomTargetTile[];
+}
+
+interface PortalPromptEvent {
+  portalId: string;
+  linkedPortalId: string | null;
+  portalX: number;
+  portalY: number;
+  destinationX: number;
+  destinationY: number;
+  teleportCost: number | null;
+  playerTreasure: number | null;
 }
 
 function keyOf(x: number, y: number) {
@@ -139,6 +152,39 @@ function parseShroomChargingEvents(events: Record<string, unknown>[]) {
   }
 
   return parsed;
+}
+
+function parseLatestPortalPromptEvent(events: Record<string, unknown>[]) {
+  let latest: PortalPromptEvent | null = null;
+
+  for (const event of events) {
+    const source = asRecord(event);
+    if (!source || source.type !== "portal_prompt") continue;
+
+    const portalId = typeof source.portalId === "string" ? source.portalId : null;
+    const linkedPortalId = typeof source.linkedPortalId === "string" ? source.linkedPortalId : null;
+    const portalX = typeof source.portalX === "number" ? source.portalX : null;
+    const portalY = typeof source.portalY === "number" ? source.portalY : null;
+    const destinationX = typeof source.destinationX === "number" ? source.destinationX : null;
+    const destinationY = typeof source.destinationY === "number" ? source.destinationY : null;
+    const teleportCost = typeof source.teleportCost === "number" ? source.teleportCost : null;
+    const playerTreasure = typeof source.playerTreasure === "number" ? source.playerTreasure : null;
+
+    if (!portalId || portalX === null || portalY === null || destinationX === null || destinationY === null) continue;
+
+    latest = {
+      portalId,
+      linkedPortalId,
+      portalX,
+      portalY,
+      destinationX,
+      destinationY,
+      teleportCost,
+      playerTreasure,
+    };
+  }
+
+  return latest;
 }
 
 function matrixAt(matrix: number[][] | null, x: number, y: number): number | null {
@@ -359,16 +405,6 @@ function toLookup<T extends { x: number; y: number }>(items: T[]) {
   return lookup;
 }
 
-function pickupToken(entity: MapEntitySnapshot) {
-  const visual = resolvePickupVisual(entity);
-  return {
-    token: visual.token,
-    accent: visual.accent,
-    label: visual.label,
-    valueText: pickupValueText(entity.value),
-  };
-}
-
 function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | null {
   if (entity.kind === "interactive") {
     const token = resolveInteractiveVisual(entity.type);
@@ -389,6 +425,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
             },
           ]
         : [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -414,6 +451,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
             },
           ]
         : [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -427,6 +465,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -440,6 +479,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -453,6 +493,7 @@ function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | nu
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -474,6 +515,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -494,6 +536,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       showToken: true,
       useWallSurface: false,
       badges: visual.badges,
+      isPortalPromptActive: false,
     };
   }
 
@@ -520,29 +563,32 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
             },
           ]
         : [],
+      isPortalPromptActive: false,
     };
   }
 
   const pickup = gameState.pickups.find((item) => item.x === x && item.y === y);
   if (pickup) {
-    const token = pickupToken(pickup);
+    const visual = resolvePickupVisual(pickup);
+    const valueText = pickupValueText(pickup.value);
     return {
       kind: "pickup",
-      label: token.label,
-      token: token.token,
-      accent: token.accent,
+      label: visual.label,
+      token: visual.token,
+      accent: visual.accent,
       hpRatio: null,
       showToken: true,
       useWallSurface: false,
-      badges: token.valueText
+      badges: valueText
         ? [
             {
               position: "se",
-              text: token.valueText,
-              tone: "value",
+              text: valueText,
+              tone: visual.badgeTone,
             },
           ]
         : [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -557,6 +603,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -571,6 +618,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -585,6 +633,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
       showToken: true,
       useWallSurface: false,
       badges: [],
+      isPortalPromptActive: false,
     };
   }
 
@@ -594,6 +643,7 @@ function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): Cell
 export function MapBoardV2({
   gameState,
   moveEvents = [],
+  portalPrompt = null,
   onDirectionalAction,
   onPassAction,
   onPortalAction,
@@ -666,12 +716,26 @@ export function MapBoardV2({
     if (!player) return null;
     return findPortalAtPosition(gameState, player.x, player.y);
   }, [gameState]);
+  const latestPortalPrompt = useMemo(() => portalPrompt ?? parseLatestPortalPromptEvent(moveEvents), [moveEvents, portalPrompt]);
+  const promptedPortalKey = useMemo(
+    () => (latestPortalPrompt ? keyOf(latestPortalPrompt.portalX, latestPortalPrompt.portalY) : null),
+    [latestPortalPrompt],
+  );
   const selectedPortal = useMemo(() => {
     if (!activeSelectedKey) return null;
     const [x, y] = activeSelectedKey.split(",").map(Number);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     return findPortalAtPosition(gameState, x, y);
   }, [activeSelectedKey, gameState]);
+  const isSelectedPortalInActivePrompt = useMemo(
+    () =>
+      Boolean(
+        latestPortalPrompt &&
+          selectedPortal &&
+          (selectedPortal.id === latestPortalPrompt.portalId || selectedPortal.id === latestPortalPrompt.linkedPortalId),
+      ),
+    [latestPortalPrompt, selectedPortal],
+  );
   const shroomChargingEvents = useMemo(() => parseShroomChargingEvents(moveEvents), [moveEvents]);
   const shroomDangerTiles = useMemo(() => {
     const tiles = new Map<string, ShroomTargetTile>();
@@ -794,6 +858,25 @@ export function MapBoardV2({
                     !isPortalActionDisabled &&
                     !isActionLocked,
                 );
+                const portalCostText =
+                  promptedPortalKey === key && latestPortalPrompt && latestPortalPrompt.teleportCost !== null
+                    ? String(latestPortalPrompt.teleportCost)
+                    : null;
+                const entityWithPortalPrompt =
+                  entity && portalCostText
+                    ? {
+                        ...entity,
+                        isPortalPromptActive: true,
+                        badges: [
+                          ...entity.badges,
+                          {
+                            position: "se",
+                            text: portalCostText,
+                            tone: "warning" as const,
+                          },
+                        ],
+                      }
+                    : entity;
 
                 return (
                   <button
@@ -801,12 +884,13 @@ export function MapBoardV2({
                     type="button"
                     className={[
                       "map2-cell",
-                      `map2-cell-${entity?.useWallSurface ? "wall" : tile}`,
+                      `map2-cell-${entityWithPortalPrompt?.useWallSurface ? "wall" : tile}`,
                       `map2-fog-${fog}`,
                       isVisited ? "map2-cell-visited" : "",
                       shroomDanger ? "map2-cell-shroom-danger" : "",
                       shroomDanger?.isMaxRange ? "map2-cell-shroom-max-range" : "",
-                      entity ? `map2-entity-${entity.accent}` : "",
+                      entityWithPortalPrompt?.isPortalPromptActive ? "map2-cell-portal-prompt" : "",
+                      entityWithPortalPrompt ? `map2-entity-${entityWithPortalPrompt.accent}` : "",
                       hint ? `map2-hint-${hint.kind}` : "",
                       isSelected ? "is-selected" : "",
                     ]
@@ -830,17 +914,17 @@ export function MapBoardV2({
                       event.preventDefault();
                       setSelectedKey(key);
                     }}
-                    title={`(${x},${y}) ${tile} ${entity?.label ?? ""}`.trim()}
+                    title={`(${x},${y}) ${tile} ${entityWithPortalPrompt?.label ?? ""}`.trim()}
                   >
                     <span className="map2-cell-base" />
                     {fog !== "hidden" ? <span className="map2-cell-pattern" /> : null}
-                    {entity && entity.showToken && fog !== "hidden" ? (
+                    {entityWithPortalPrompt && entityWithPortalPrompt.showToken && fog !== "hidden" ? (
                       <span className="map2-token">
-                        <span className="map2-token-core">{entity.token}</span>
+                        <span className="map2-token-core">{entityWithPortalPrompt.token}</span>
                       </span>
                     ) : null}
-                    {entity && fog !== "hidden"
-                      ? entity.badges.map((badge) => (
+                    {entityWithPortalPrompt && fog !== "hidden"
+                      ? entityWithPortalPrompt.badges.map((badge) => (
                           <span
                             key={`${badge.position}:${badge.text}`}
                             className={`map2-token-badge map2-token-badge-${badge.position} map2-token-badge-${badge.tone}`}
@@ -942,6 +1026,12 @@ export function MapBoardV2({
                 <div className="map2-kv">
                   <span>Linked</span>
                   <strong>{selectedPortal.linkedPortalId ?? "-"}</strong>
+                </div>
+                <div className="map2-kv">
+                  <span>Teleport cost</span>
+                  <strong>
+                    {isSelectedPortalInActivePrompt ? latestPortalPrompt?.teleportCost ?? "-" : "-"}
+                  </strong>
                 </div>
               </>
             ) : null}

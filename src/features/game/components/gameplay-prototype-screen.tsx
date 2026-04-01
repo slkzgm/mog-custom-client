@@ -9,6 +9,9 @@ export function GameplayPrototypeScreen() {
     disabled: model.hotkeysDisabled,
     onMove: model.handleMove,
     onPass: model.handlePass,
+    pendingUpgradeOptions: model.upgrades.pendingUpgradeOptions,
+    onRerollUpgrades: model.upgrades.handleRerollUpgrades,
+    onSelectUpgrade: model.upgrades.handleSelectUpgrade,
   });
 
   if (!model.runState) {
@@ -28,6 +31,7 @@ export function GameplayPrototypeScreen() {
       <MapBoardV2
         gameState={model.runState}
         moveEvents={model.lastMoveEvents}
+        portalPrompt={model.portalPrompt}
         onDirectionalAction={model.handleMove}
         onPassAction={model.handlePass}
         onPortalAction={model.portal.handleUsePortal}

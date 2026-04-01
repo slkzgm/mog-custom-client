@@ -9,6 +9,9 @@ export function GamePanel() {
     disabled: model.controls.hotkeysDisabled,
     onMove: model.controls.handleMove,
     onPass: model.controls.handlePass,
+    pendingUpgradeOptions: model.upgrades.pendingUpgradeOptions,
+    onRerollUpgrades: model.upgrades.handleRerollUpgrades,
+    onSelectUpgrade: model.upgrades.handleSelectUpgrade,
   });
 
   return <GamePanelView model={model} />;

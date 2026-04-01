@@ -20,6 +20,7 @@ export function useGameplayScreenModel() {
   return {
     runState: runSession.effectiveGameState,
     lastMoveEvents: runSession.runtimeState.lastMoveEvents,
+    portalPrompt: runSession.runtimeState.portalPrompt,
     hasActiveRun: Boolean(runSession.activeRunId),
     isActionLocked: runSession.hasPendingUpgradeSelection || runActions.isAnyActionPending,
     hotkeysDisabled: runActions.hotkeysDisabled,
