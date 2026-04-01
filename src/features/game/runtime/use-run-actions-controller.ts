@@ -36,7 +36,6 @@ export function useRunActionsController(
     | "canEstimateNextRerollCost"
     | "pendingUpgradeOptions"
     | "isRefreshDisabled"
-    | "runtimeState"
   >,
 ) {
   const runMoveMutation = useRunMoveMutation();

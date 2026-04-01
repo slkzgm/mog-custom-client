@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import type { GameStateSnapshot } from "../game.types";
+import { parseLatestPortalPromptEvent } from "./game-event-parsers";
 
 export interface RuntimeActionMetrics {
   lastActionLatencyMs: number | null;
@@ -20,11 +21,6 @@ export interface RuntimePortalPrompt {
   playerY: number;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
 function parseLatestPortalPrompt(
   events: Record<string, unknown>[],
   gameState: GameStateSnapshot | null,
@@ -32,37 +28,14 @@ function parseLatestPortalPrompt(
   const player = gameState?.player;
   if (!player) return null;
 
-  let latest: RuntimePortalPrompt | null = null;
+  const latest = parseLatestPortalPromptEvent(events);
+  if (!latest) return null;
 
-  for (const event of events) {
-    const source = asRecord(event);
-    if (!source || source.type !== "portal_prompt") continue;
-
-    const portalId = typeof source.portalId === "string" ? source.portalId : null;
-    const linkedPortalId = typeof source.linkedPortalId === "string" ? source.linkedPortalId : null;
-    const portalX = typeof source.portalX === "number" ? source.portalX : null;
-    const portalY = typeof source.portalY === "number" ? source.portalY : null;
-    const destinationX = typeof source.destinationX === "number" ? source.destinationX : null;
-    const destinationY = typeof source.destinationY === "number" ? source.destinationY : null;
-    const teleportCost = typeof source.teleportCost === "number" ? source.teleportCost : null;
-    const playerTreasure = typeof source.playerTreasure === "number" ? source.playerTreasure : null;
-    if (!portalId || portalX === null || portalY === null || destinationX === null || destinationY === null) continue;
-
-    latest = {
-      portalId,
-      linkedPortalId,
-      portalX,
-      portalY,
-      destinationX,
-      destinationY,
-      teleportCost,
-      playerTreasure,
-      playerX: player.x,
-      playerY: player.y,
-    };
-  }
-
-  return latest;
+  return {
+    ...latest,
+    playerX: player.x,
+    playerY: player.y,
+  };
 }
 
 export function useRunRuntimeState() {

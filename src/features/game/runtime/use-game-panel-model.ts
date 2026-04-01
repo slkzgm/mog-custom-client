@@ -1,23 +1,10 @@
 import { useBuyKeysController } from "./use-buy-keys-controller";
-import { useRunActionsController } from "./use-run-actions-controller";
-import { useRunSessionController } from "./use-run-session-controller";
+import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
 export function useGamePanelModel() {
-  const runSession = useRunSessionController();
+  const gameplay = useSharedGameplayModel();
+  const { runSession, controls, upgrades } = gameplay;
   const buyKeys = useBuyKeysController(runSession);
-  const runActions = useRunActionsController({
-    activeRunId: runSession.activeRunId,
-    effectiveGameState: runSession.effectiveGameState,
-    runtimeState: runSession.runtimeState,
-    recoverRunStateFromServer: runSession.recoverRunStateFromServer,
-    moveRunId: runSession.moveRunId,
-    hasPendingUpgradeSelection: runSession.hasPendingUpgradeSelection,
-    hasEnoughTreasureForReroll: runSession.hasEnoughTreasureForReroll,
-    nextRerollCost: runSession.nextRerollCost,
-    canEstimateNextRerollCost: runSession.canEstimateNextRerollCost,
-    pendingUpgradeOptions: runSession.pendingUpgradeOptions,
-    isRefreshDisabled: runSession.isRefreshDisabled,
-  });
 
   return {
     status: {
@@ -62,32 +49,14 @@ export function useGamePanelModel() {
       arrowTrapLines: runSession.arrowTrapLines,
     },
     upgrades: {
-      pendingUpgradeOptions: runSession.pendingUpgradeOptions,
-      hasPendingUpgradeSelection: runSession.hasPendingUpgradeSelection,
+      ...upgrades,
       nextRerollCost: runSession.nextRerollCost,
       canEstimateNextRerollCost: runSession.canEstimateNextRerollCost,
       hasEnoughTreasureForReroll: runSession.hasEnoughTreasureForReroll,
-      rerollValidationError: runActions.rerollValidationError,
-      isRerollDisabled: runActions.isRerollDisabled,
-      runRerollMutation: runActions.runRerollMutation,
-      selectUpgradeMutation: runActions.selectUpgradeMutation,
-      handleRerollUpgrades: runActions.handleRerollUpgrades,
-      handleSelectUpgrade: runActions.handleSelectUpgrade,
     },
     controls: {
-      moveRunId: runSession.moveRunId,
-      runMoveMutation: runActions.runMoveMutation,
-      runTeleportMutation: runActions.runTeleportMutation,
-      isAnyActionPending: runActions.isAnyActionPending,
-      hotkeysDisabled: runActions.hotkeysDisabled,
-      isRefreshDisabled: runActions.isRefreshDisabled || buyKeys.isBuyKeysReceiptFetching || buyKeys.buyKeysMutation.isPending,
-      validateMove: runActions.validateMove,
-      validatePass: runActions.validatePass,
-      validateUsePortal: runActions.validateUsePortal,
-      getDirectionalActionLabel: runActions.getDirectionalActionLabel,
-      handleMove: runActions.handleMove,
-      handlePass: runActions.handlePass,
-      handleUsePortal: runActions.handleUsePortal,
+      ...controls,
+      isRefreshDisabled: controls.isRefreshDisabled || buyKeys.isBuyKeysReceiptFetching || buyKeys.buyKeysMutation.isPending,
     },
     queries: {
       activeRunQuery: runSession.activeRunQuery,

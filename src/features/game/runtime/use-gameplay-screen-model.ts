@@ -1,46 +1,23 @@
-import { useRunActionsController } from "./use-run-actions-controller";
-import { useRunSessionController } from "./use-run-session-controller";
+import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
 export function useGameplayScreenModel() {
-  const runSession = useRunSessionController();
-  const runActions = useRunActionsController({
-    activeRunId: runSession.activeRunId,
-    effectiveGameState: runSession.effectiveGameState,
-    runtimeState: runSession.runtimeState,
-    recoverRunStateFromServer: runSession.recoverRunStateFromServer,
-    moveRunId: runSession.moveRunId,
-    hasPendingUpgradeSelection: runSession.hasPendingUpgradeSelection,
-    hasEnoughTreasureForReroll: runSession.hasEnoughTreasureForReroll,
-    nextRerollCost: runSession.nextRerollCost,
-    canEstimateNextRerollCost: runSession.canEstimateNextRerollCost,
-    pendingUpgradeOptions: runSession.pendingUpgradeOptions,
-    isRefreshDisabled: runSession.isRefreshDisabled,
-  });
+  const gameplay = useSharedGameplayModel();
 
   return {
-    runState: runSession.effectiveGameState,
-    lastMoveEvents: runSession.runtimeState.lastMoveEvents,
-    portalPrompt: runSession.runtimeState.portalPrompt,
-    hasActiveRun: Boolean(runSession.activeRunId),
-    isActionLocked: runSession.hasPendingUpgradeSelection || runActions.isAnyActionPending,
-    hotkeysDisabled: runActions.hotkeysDisabled,
-    handleMove: runActions.handleMove,
-    handlePass: runActions.handlePass,
+    runState: gameplay.runState,
+    lastMoveEvents: gameplay.lastMoveEvents,
+    portalPrompt: gameplay.portalPrompt,
+    hasActiveRun: Boolean(gameplay.runSession.activeRunId),
+    isActionLocked: gameplay.isActionLocked,
+    hotkeysDisabled: gameplay.hotkeysDisabled,
+    handleMove: gameplay.controls.handleMove,
+    handlePass: gameplay.controls.handlePass,
     portal: {
-      runTeleportMutation: runActions.runTeleportMutation,
-      validateUsePortal: runActions.validateUsePortal,
-      handleUsePortal: runActions.handleUsePortal,
+      runTeleportMutation: gameplay.controls.runTeleportMutation,
+      validateUsePortal: gameplay.controls.validateUsePortal,
+      handleUsePortal: gameplay.controls.handleUsePortal,
     },
-    upgrades: {
-      pendingUpgradeOptions: runSession.pendingUpgradeOptions,
-      hasPendingUpgradeSelection: runSession.hasPendingUpgradeSelection,
-      rerollValidationError: runActions.rerollValidationError,
-      isRerollDisabled: runActions.isRerollDisabled,
-      runRerollMutation: runActions.runRerollMutation,
-      selectUpgradeMutation: runActions.selectUpgradeMutation,
-      handleRerollUpgrades: runActions.handleRerollUpgrades,
-      handleSelectUpgrade: runActions.handleSelectUpgrade,
-    },
+    upgrades: gameplay.upgrades,
   };
 }
 

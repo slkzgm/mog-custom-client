@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { parseFeatureFlag } from "./feature-flags";
+
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().min(1).optional(),
   VITE_ENABLE_ENCOUNTER_CATALOG: z.string().optional(),
@@ -64,17 +66,6 @@ function parseSiweExpirationDays(rawValue: string | undefined): number {
   if (integer < 1) return 1;
   if (integer > 30) return 30;
   return integer;
-}
-
-function parseFeatureFlag(rawValue: string | undefined, defaultValue: boolean): boolean {
-  if (rawValue === undefined) return defaultValue;
-
-  const normalized = rawValue.trim().toLowerCase();
-  if (!normalized) return defaultValue;
-  if (["1", "true", "yes", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "off"].includes(normalized)) return false;
-
-  return defaultValue;
 }
 
 export const appConfig = {
