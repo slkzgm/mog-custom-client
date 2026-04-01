@@ -101,7 +101,7 @@ export function shouldIgnoreGameplayHotkey(event: KeyboardEvent): boolean {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return false;
 
-  return Boolean(target.closest("input, textarea, select, button, [contenteditable]"));
+  return Boolean(target.closest("input, textarea, select, [contenteditable]"));
 }
 
 export function estimateNextRerollCost(currentRerollCount: number | null | undefined): number | null {
