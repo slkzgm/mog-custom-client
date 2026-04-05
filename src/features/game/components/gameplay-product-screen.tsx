@@ -1,4 +1,3 @@
-import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
 import { useGameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { shortenAddress } from "../../auth/use-auth-controller";
 import { GameplayProductLobby } from "./gameplay-product-lobby";
@@ -79,16 +78,6 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
 
 export function GameplayProductScreen() {
   const model = useGameplayProductScreenModel();
-
-  useGameplayHotkeys({
-    disabled: model.gameplay.hotkeysDisabled || !model.shouldShowRun,
-    isActionPending: model.gameplay.controls.isAnyActionPending,
-    onMove: model.gameplay.controls.handleMove,
-    onPass: model.gameplay.controls.handlePass,
-    pendingUpgradeOptions: model.gameplay.upgrades.pendingUpgradeOptions,
-    onRerollUpgrades: model.gameplay.upgrades.handleRerollUpgrades,
-    onSelectUpgrade: model.gameplay.upgrades.handleSelectUpgrade,
-  });
 
   return (
     <main className={`gameplay-map-page product-shell ${model.shouldShowRun ? "product-shell-map" : "product-shell-lobby"}`}>

@@ -45,13 +45,13 @@ export function MapBoardV2({
           {model.viewMode === "focus" ? (
             <>
               <div className="map2-toolbar">
-                <button type="button" onClick={model.zoomIn} title="Zoom in">
+                <button type="button" onClick={model.zoomOut} title="Zoom out">
                   -
                 </button>
                 <button type="button" className="map2-toolbar-value" disabled title="Focus window">
-                  {model.focusWindowSize}x{model.focusWindowSize}
+                  {model.columnCount}x{model.rowCount}
                 </button>
-                <button type="button" onClick={model.zoomOut} title="Zoom out">
+                <button type="button" onClick={model.zoomIn} title="Zoom in">
                   +
                 </button>
                 <button type="button" onClick={model.resetFocusOffset} title="Center on player">

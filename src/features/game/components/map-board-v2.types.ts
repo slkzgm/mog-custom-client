@@ -33,6 +33,16 @@ export interface FocusOffset {
   y: number;
 }
 
+export interface FocusWindow {
+  columns: number;
+  rows: number;
+}
+
+export interface FocusViewportSize {
+  width: number;
+  height: number;
+}
+
 export interface FocusOffsetState {
   offset: FocusOffset;
   turnKey: string;

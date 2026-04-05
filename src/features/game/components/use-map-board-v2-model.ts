@@ -12,17 +12,25 @@ import { useMapEntityMemory } from "../runtime/use-map-entity-memory";
 import { useMapFogMemory } from "../runtime/use-map-fog-memory";
 import { useMapSnapshotProbe } from "../runtime/use-map-snapshot-probe";
 import { useMapVisitedCells } from "../runtime/use-map-visited-cells";
-import type { CellEntity, CellHint, MapBoardCellViewModel, MapBoardV2Props } from "./map-board-v2.types";
+import type {
+  CellEntity,
+  CellHint,
+  FocusViewportSize,
+  MapBoardCellViewModel,
+  MapBoardV2Props,
+} from "./map-board-v2.types";
 import {
-  buildHints,
   buildEntityPositionLookups,
+  buildHints,
   buildViewport,
   clamp,
   fogStateAt,
+  getFocusOffsetBounds,
   keyOf,
   parseCoordinateKey,
   predictEnemyNextMoveDirection,
   rememberedEntityToCellEntity,
+  resolveFocusWindow,
   resolveEntityWithLookups,
   selectedEnemyIntent,
   tileKindAtWithLookups,
@@ -121,6 +129,7 @@ function resolveCellAction(params: {
 export function useMapBoardV2Model({
   gameState,
   optimisticPlayerPosition = null,
+  focusViewportSize = null,
   moveEvents = [],
   portalPrompt = null,
   onDirectionalAction,
@@ -138,7 +147,7 @@ export function useMapBoardV2Model({
   | "onPassAction"
   | "onPortalAction"
   | "isPortalActionDisabled"
-> & { isActionLocked: boolean }) {
+> & { isActionLocked: boolean; focusViewportSize?: FocusViewportSize | null }) {
   const [viewMode, setViewMode] = useState<"focus" | "full">("focus");
   const [focusRadius, setFocusRadius] = useState(6);
   const currentTurnKey = `${gameState.runId ?? "no-run"}:${gameState.currentFloor ?? "?"}:${gameState.turnNumber ?? "?"}`;
@@ -158,6 +167,8 @@ export function useMapBoardV2Model({
   const fogMemory = useMapFogMemory(gameState, isMapFogMemoryEnabled);
   const mapSnapshotProbe = useMapSnapshotProbe(gameState, isMapSnapshotProbeEnabled);
   const visitedCells = useMapVisitedCells(gameState, isMapVisitedCellsEnabled);
+  const mapHeight = gameState.mapData?.length ?? 0;
+  const mapWidth = gameState.mapData?.[0]?.length ?? 0;
   const displayGameState = useMemo(() => {
     if (!optimisticPlayerPosition || !gameState.player) return gameState;
 
@@ -175,9 +186,24 @@ export function useMapBoardV2Model({
     () => (focusOffsetState.turnKey === currentTurnKey ? focusOffsetState.offset : { x: 0, y: 0 }),
     [currentTurnKey, focusOffsetState.offset, focusOffsetState.turnKey],
   );
+  const focusWindow = useMemo(
+    () => resolveFocusWindow(mapWidth, mapHeight, focusRadius, focusViewportSize),
+    [focusRadius, focusViewportSize, mapHeight, mapWidth],
+  );
+  const focusOffsetBounds = useMemo(
+    () => getFocusOffsetBounds(displayGameState, focusWindow),
+    [displayGameState, focusWindow],
+  );
+  const clampedFocusOffset = useMemo(
+    () => ({
+      x: clamp(effectiveFocusOffset.x, focusOffsetBounds.minX, focusOffsetBounds.maxX),
+      y: clamp(effectiveFocusOffset.y, focusOffsetBounds.minY, focusOffsetBounds.maxY),
+    }),
+    [effectiveFocusOffset.x, effectiveFocusOffset.y, focusOffsetBounds.maxX, focusOffsetBounds.maxY, focusOffsetBounds.minX, focusOffsetBounds.minY],
+  );
   const viewport = useMemo(
-    () => buildViewport(displayGameState, viewMode, focusRadius, effectiveFocusOffset),
-    [displayGameState, effectiveFocusOffset, focusRadius, viewMode],
+    () => buildViewport(displayGameState, viewMode, focusWindow, clampedFocusOffset),
+    [clampedFocusOffset, displayGameState, focusWindow, viewMode],
   );
   const entityLookups = useMemo(() => buildEntityPositionLookups(gameState), [gameState]);
   const hintsByKey = useMemo(() => buildHints(displayGameState), [displayGameState]);
@@ -339,11 +365,29 @@ export function useMapBoardV2Model({
     setFocusOffsetState((current) => ({
       turnKey: currentTurnKey,
       offset: {
-        x: (current.turnKey === currentTurnKey ? current.offset.x : 0) + deltaX,
-        y: (current.turnKey === currentTurnKey ? current.offset.y : 0) + deltaY,
+        x: clamp(
+          (current.turnKey === currentTurnKey ? current.offset.x : 0) + deltaX,
+          focusOffsetBounds.minX,
+          focusOffsetBounds.maxX,
+        ),
+        y: clamp(
+          (current.turnKey === currentTurnKey ? current.offset.y : 0) + deltaY,
+          focusOffsetBounds.minY,
+          focusOffsetBounds.maxY,
+        ),
       },
     }));
-  }, [currentTurnKey]);
+  }, [currentTurnKey, focusOffsetBounds.maxX, focusOffsetBounds.maxY, focusOffsetBounds.minX, focusOffsetBounds.minY]);
+
+  const setFocusOffset = useCallback((x: number, y: number) => {
+    setFocusOffsetState({
+      turnKey: currentTurnKey,
+      offset: {
+        x: clamp(x, focusOffsetBounds.minX, focusOffsetBounds.maxX),
+        y: clamp(y, focusOffsetBounds.minY, focusOffsetBounds.maxY),
+      },
+    });
+  }, [currentTurnKey, focusOffsetBounds.maxX, focusOffsetBounds.maxY, focusOffsetBounds.minX, focusOffsetBounds.minY]);
 
   const resetFocusOffset = useCallback(() => {
     setFocusOffsetState({
@@ -377,10 +421,12 @@ export function useMapBoardV2Model({
   return {
     cells,
     columnCount: xValues.length,
+    rowCount: yValues.length,
     hasMapData: xValues.length > 0 && yValues.length > 0,
     viewMode,
     focusWindowSize,
-    effectiveFocusOffset,
+    focusOffset: clampedFocusOffset,
+    effectiveFocusOffset: clampedFocusOffset,
     latestPortalPrompt,
     playerPortal,
     selectedEnemy,
@@ -405,6 +451,7 @@ export function useMapBoardV2Model({
     zoomIn,
     zoomOut,
     panFocus,
+    setFocusOffset,
     resetFocusOffset,
     handleSelectCell,
     handleActivateCell,

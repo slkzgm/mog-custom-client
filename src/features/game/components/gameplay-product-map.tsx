@@ -1,12 +1,75 @@
+import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import { MapBoardV2Grid } from "./map-board-v2-grid";
 import { useMapBoardV2Model } from "./use-map-board-v2-model";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { getRunModeRewardValue } from "../game-modes";
+import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
 import { getUpgradeUiDescription, getUpgradeUiLabel } from "../upgrade-ui-catalog";
-import { parseCoordinateKey } from "./map-board-v2.utils";
+import { clamp, parseCoordinateKey } from "./map-board-v2.utils";
 
 interface GameplayProductMapProps {
   model: GameplayProductScreenModel;
+}
+
+const PRODUCT_MAP_GRID_GAP = 1;
+const PRODUCT_MAP_GRID_PADDING = 2;
+const PRODUCT_MAP_CELL_SIZE_FALLBACK = 56;
+const PRODUCT_MAP_CELL_SIZE_MIN = 16;
+const PRODUCT_MAP_CELL_SIZE_MAX = 96;
+
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+
+      const nextWidth = Math.round(entry.contentRect.width);
+      const nextHeight = Math.round(entry.contentRect.height);
+
+      setSize((current) =>
+        current.width === nextWidth && current.height === nextHeight
+          ? current
+          : { width: nextWidth, height: nextHeight },
+      );
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, size] as const;
+}
+
+function getResponsiveCellSize(width: number, height: number, columnCount: number, rowCount: number) {
+  if (width <= 0 || height <= 0 || columnCount <= 0 || rowCount <= 0) {
+    return PRODUCT_MAP_CELL_SIZE_FALLBACK;
+  }
+
+  const availableWidth = width - PRODUCT_MAP_GRID_PADDING - (columnCount - 1) * PRODUCT_MAP_GRID_GAP;
+  const availableHeight = height - PRODUCT_MAP_GRID_PADDING - (rowCount - 1) * PRODUCT_MAP_GRID_GAP;
+  const maxCellWidth = availableWidth / columnCount;
+  const maxCellHeight = availableHeight / rowCount;
+
+  return clamp(
+    Math.floor(Math.min(maxCellWidth, maxCellHeight)),
+    PRODUCT_MAP_CELL_SIZE_MIN,
+    PRODUCT_MAP_CELL_SIZE_MAX,
+  );
 }
 
 function ProductSelectedCellCard({
@@ -137,11 +200,13 @@ function ProductMapToolbar({
       {mapModel.viewMode === "focus" ? (
         <>
           <div className="product-map-toolbar-group">
-            <button type="button" className="product-map-toolbar-button" onClick={mapModel.zoomIn}>
+            <button type="button" className="product-map-toolbar-button" onClick={mapModel.zoomOut} title="Zoom out">
               -
             </button>
-            <span className="product-map-toolbar-readout">{mapModel.focusWindowSize}x{mapModel.focusWindowSize}</span>
-            <button type="button" className="product-map-toolbar-button" onClick={mapModel.zoomOut}>
+            <span className="product-map-toolbar-readout">
+              {mapModel.columnCount}x{mapModel.rowCount}
+            </span>
+            <button type="button" className="product-map-toolbar-button" onClick={mapModel.zoomIn} title="Zoom in">
               +
             </button>
           </div>
@@ -162,6 +227,10 @@ function ProductMapToolbar({
             <button type="button" className="product-map-toolbar-button" onClick={mapModel.resetFocusOffset}>
               Center
             </button>
+          </div>
+
+          <div className="product-map-toolbar-group">
+            <span className="product-map-toolbar-meta">Drag to pan • Wheel to zoom</span>
           </div>
         </>
       ) : null}
@@ -334,12 +403,141 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
   );
 }
 
+function ProductMapViewport({
+  model,
+  mapModel,
+  viewportRef,
+  viewportSize,
+}: {
+  model: GameplayProductScreenModel;
+  mapModel: ReturnType<typeof useMapBoardV2Model>;
+  viewportRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
+  viewportSize: ReturnType<typeof useElementSize<HTMLDivElement>>[1];
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef<{
+    pointerId: number;
+    originX: number;
+    originY: number;
+    startOffsetX: number;
+    startOffsetY: number;
+  } | null>(null);
+  const suppressClickRef = useRef(false);
+  const cellSize = useMemo(
+    () => getResponsiveCellSize(viewportSize.width, viewportSize.height, mapModel.columnCount, mapModel.rowCount),
+    [mapModel.columnCount, mapModel.rowCount, viewportSize.height, viewportSize.width],
+  );
+
+  function stopDragging() {
+    dragStateRef.current = null;
+    setIsDragging(false);
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (mapModel.viewMode !== "focus") return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      startOffsetX: mapModel.focusOffset.x,
+      startOffsetY: mapModel.focusOffset.y,
+    };
+    suppressClickRef.current = false;
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId || cellSize <= 0) return;
+
+    const deltaX = dragState.originX - event.clientX;
+    const deltaY = dragState.originY - event.clientY;
+
+    if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+      suppressClickRef.current = true;
+    }
+
+    mapModel.setFocusOffset(
+      dragState.startOffsetX + Math.round(deltaX / cellSize),
+      dragState.startOffsetY + Math.round(deltaY / cellSize),
+    );
+  }
+
+  function handlePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragStateRef.current?.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    stopDragging();
+  }
+
+  function handlePointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    if (dragStateRef.current?.pointerId !== event.pointerId) return;
+    stopDragging();
+  }
+
+  function handleClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!suppressClickRef.current) return;
+    suppressClickRef.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleWheel(event: WheelEvent<HTMLDivElement>) {
+    if (mapModel.viewMode !== "focus") return;
+    event.preventDefault();
+
+    if (event.deltaY < 0) {
+      mapModel.zoomIn();
+      return;
+    }
+
+    if (event.deltaY > 0) {
+      mapModel.zoomOut();
+    }
+  }
+
+  return (
+    <div
+      className={`product-map-grid-wrap ${mapModel.viewMode === "focus" ? "is-focus" : "is-full"} ${isDragging ? "is-dragging" : ""}`}
+    >
+      <ProductMapToolbar model={model} mapModel={mapModel} />
+      <div
+        ref={viewportRef}
+        className="product-map-board-viewport"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onClickCapture={handleClickCapture}
+        onWheel={handleWheel}
+      >
+        <MapBoardV2Grid
+          cells={mapModel.cells}
+          columnCount={mapModel.columnCount}
+          onActivateCell={mapModel.handleActivateCell}
+          onSelectCell={mapModel.handleSelectCell}
+          cellSize={cellSize}
+        />
+      </div>
+      <ProductMapHud model={model} />
+      <ProductSelectedCellCard mapModel={mapModel} />
+      <ProductUpgradeSelection model={model} />
+    </div>
+  );
+}
+
 export function GameplayProductMap({ model }: GameplayProductMapProps) {
   const runState = model.gameplay.runState!;
+  const [viewportRef, viewportSize] = useElementSize<HTMLDivElement>();
 
   const mapModel = useMapBoardV2Model({
     gameState: runState,
     optimisticPlayerPosition: model.gameplay.optimisticPlayerPosition,
+    focusViewportSize: viewportSize,
     moveEvents: model.gameplay.lastMoveEvents,
     portalPrompt: model.gameplay.portalPrompt,
     onDirectionalAction: model.gameplay.controls.handleMove,
@@ -352,24 +550,37 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
     isActionLocked: model.gameplay.isActionLocked,
   });
 
+  useGameplayHotkeys({
+    disabled: model.gameplay.hotkeysDisabled,
+    isActionPending: model.gameplay.controls.isAnyActionPending,
+    onMove: model.gameplay.controls.handleMove,
+    onPanCamera: (direction) => {
+      if (direction === "up") {
+        mapModel.panFocus(0, -2);
+        return;
+      }
+      if (direction === "down") {
+        mapModel.panFocus(0, 2);
+        return;
+      }
+      if (direction === "left") {
+        mapModel.panFocus(-2, 0);
+        return;
+      }
+      mapModel.panFocus(2, 0);
+    },
+    onPass: model.gameplay.controls.handlePass,
+    pendingUpgradeOptions: model.gameplay.upgrades.pendingUpgradeOptions,
+    onRerollUpgrades: model.gameplay.upgrades.handleRerollUpgrades,
+    onSelectUpgrade: model.gameplay.upgrades.handleSelectUpgrade,
+  });
+
   return (
     <section className="product-map-shell">
       <div className="product-map-stage">
-        <ProductMapToolbar model={model} mapModel={mapModel} />
-        <div className="product-map-grid-wrap">
-          <MapBoardV2Grid
-            cells={mapModel.cells}
-            columnCount={mapModel.columnCount}
-            onActivateCell={mapModel.handleActivateCell}
-            onSelectCell={mapModel.handleSelectCell}
-          />
-          <ProductMapHud model={model} />
-          <ProductSelectedCellCard mapModel={mapModel} />
-        </div>
+        <ProductMapViewport model={model} mapModel={mapModel} viewportRef={viewportRef} viewportSize={viewportSize} />
         <ProductMobileControls model={model} />
       </div>
-
-      <ProductUpgradeSelection model={model} />
     </section>
   );
 }

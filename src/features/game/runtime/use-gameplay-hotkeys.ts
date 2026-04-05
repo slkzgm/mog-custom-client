@@ -7,6 +7,7 @@ interface UseGameplayHotkeysParams {
   disabled: boolean;
   isActionPending?: boolean;
   onMove: (direction: MoveDirection) => void | Promise<void>;
+  onPanCamera?: (direction: MoveDirection) => void;
   onPass: () => void | Promise<void>;
   pendingUpgradeOptions?: string[];
   onRerollUpgrades?: () => void | Promise<void>;
@@ -17,6 +18,7 @@ export function useGameplayHotkeys({
   disabled,
   isActionPending = false,
   onMove,
+  onPanCamera,
   onPass,
   pendingUpgradeOptions = [],
   onRerollUpgrades,
@@ -56,30 +58,39 @@ export function useGameplayHotkeys({
       return;
     }
 
+    const cameraDirection: MoveDirection | null =
+      normalizedKey === "arrowup"
+        ? "up"
+        : normalizedKey === "arrowleft"
+          ? "left"
+          : normalizedKey === "arrowdown"
+            ? "down"
+            : normalizedKey === "arrowright"
+              ? "right"
+              : null;
+
+    if (cameraDirection) {
+      event.preventDefault();
+      onPanCamera?.(cameraDirection);
+      return;
+    }
+
     const direction: MoveDirection | null =
       normalizedKey === "w"
         ? "up"
-        : normalizedKey === "arrowup"
-          ? "up"
-          : normalizedKey === "k"
+        : normalizedKey === "k"
             ? "up"
         : normalizedKey === "a"
           ? "left"
-          : normalizedKey === "arrowleft"
-            ? "left"
-            : normalizedKey === "h"
+          : normalizedKey === "h"
               ? "left"
           : normalizedKey === "s"
             ? "down"
-            : normalizedKey === "arrowdown"
-              ? "down"
-              : normalizedKey === "j"
+            : normalizedKey === "j"
                 ? "down"
             : normalizedKey === "d"
               ? "right"
-              : normalizedKey === "arrowright"
-                ? "right"
-                : normalizedKey === "l"
+              : normalizedKey === "l"
                   ? "right"
               : null;
 

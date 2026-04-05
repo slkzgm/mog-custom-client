@@ -15,6 +15,8 @@ import type {
   CellEntity,
   CellHint,
   FocusOffset,
+  FocusViewportSize,
+  FocusWindow,
   FogState,
   TileKind,
   ViewMode,
@@ -125,6 +127,44 @@ export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function toPreferredCount(value: number, max: number) {
+  const clamped = clamp(Math.round(value), 1, max);
+  if (clamped <= 2 || clamped === max || clamped % 2 === 1) return clamped;
+  return clamped - 1;
+}
+
+export function resolveFocusWindow(
+  mapWidth: number,
+  mapHeight: number,
+  focusRadius: number,
+  viewportSize: FocusViewportSize | null,
+): FocusWindow {
+  if (mapWidth <= 0 || mapHeight <= 0) {
+    return { columns: 0, rows: 0 };
+  }
+
+  const fallbackSpan = Math.min(focusRadius * 2 + 1, mapWidth, mapHeight);
+  if (!viewportSize || viewportSize.width <= 0 || viewportSize.height <= 0) {
+    return {
+      columns: Math.min(mapWidth, fallbackSpan),
+      rows: Math.min(mapHeight, fallbackSpan),
+    };
+  }
+
+  const aspectRatio = clamp(viewportSize.width / viewportSize.height, 0.5, 3.5);
+  const baseSpan = focusRadius * 2 + 1;
+
+  if (aspectRatio >= 1) {
+    const rows = toPreferredCount(Math.min(baseSpan, mapHeight), mapHeight);
+    const columns = toPreferredCount(Math.max(baseSpan, rows * aspectRatio), mapWidth);
+    return { columns, rows };
+  }
+
+  const columns = toPreferredCount(Math.min(baseSpan, mapWidth), mapWidth);
+  const rows = toPreferredCount(Math.max(baseSpan, columns / aspectRatio), mapHeight);
+  return { columns, rows };
+}
+
 function isGhostEnemyLabels(type: string, spriteType: string | null) {
   const normalizedType = type.trim().toLowerCase();
   const normalizedSprite = spriteType?.trim().toLowerCase() ?? "";
@@ -223,7 +263,7 @@ export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySn
 export function buildViewport(
   gameState: GameStateSnapshot,
   mode: ViewMode,
-  focusRadius: number,
+  focusWindow: FocusWindow,
   focusOffset: FocusOffset,
 ): Viewport {
   const mapHeight = gameState.mapData?.length ?? 0;
@@ -237,13 +277,51 @@ export function buildViewport(
     return { minX: 0, maxX: mapWidth - 1, minY: 0, maxY: mapHeight - 1 };
   }
 
-  const centerX = gameState.player.x + focusOffset.x;
-  const centerY = gameState.player.y + focusOffset.y;
+  const visibleWidth = Math.min(focusWindow.columns, mapWidth);
+  const visibleHeight = Math.min(focusWindow.rows, mapHeight);
+  const radiusX = Math.floor((visibleWidth - 1) / 2);
+  const radiusY = Math.floor((visibleHeight - 1) / 2);
+  const centerX =
+    visibleWidth >= mapWidth
+      ? Math.floor((mapWidth - 1) / 2)
+      : clamp(gameState.player.x + focusOffset.x, radiusX, mapWidth - 1 - radiusX);
+  const centerY =
+    visibleHeight >= mapHeight
+      ? Math.floor((mapHeight - 1) / 2)
+      : clamp(gameState.player.y + focusOffset.y, radiusY, mapHeight - 1 - radiusY);
+
   return {
-    minX: centerX - focusRadius,
-    maxX: centerX + focusRadius,
-    minY: centerY - focusRadius,
-    maxY: centerY + focusRadius,
+    minX: visibleWidth >= mapWidth ? 0 : centerX - radiusX,
+    maxX: visibleWidth >= mapWidth ? mapWidth - 1 : centerX + radiusX,
+    minY: visibleHeight >= mapHeight ? 0 : centerY - radiusY,
+    maxY: visibleHeight >= mapHeight ? mapHeight - 1 : centerY + radiusY,
+  };
+}
+
+export function getFocusOffsetBounds(gameState: GameStateSnapshot, focusWindow: FocusWindow) {
+  const player = gameState.player;
+  const mapHeight = gameState.mapData?.length ?? 0;
+  const mapWidth = gameState.mapData?.[0]?.length ?? 0;
+
+  if (!player || mapWidth === 0 || mapHeight === 0) {
+    return {
+      minX: 0,
+      maxX: 0,
+      minY: 0,
+      maxY: 0,
+    };
+  }
+
+  const visibleWidth = Math.min(focusWindow.columns, mapWidth);
+  const visibleHeight = Math.min(focusWindow.rows, mapHeight);
+  const radiusX = Math.floor((visibleWidth - 1) / 2);
+  const radiusY = Math.floor((visibleHeight - 1) / 2);
+
+  return {
+    minX: visibleWidth >= mapWidth ? 0 : radiusX - player.x,
+    maxX: visibleWidth >= mapWidth ? 0 : mapWidth - 1 - radiusX - player.x,
+    minY: visibleHeight >= mapHeight ? 0 : radiusY - player.y,
+    maxY: visibleHeight >= mapHeight ? 0 : mapHeight - 1 - radiusY - player.y,
   };
 }
 

@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 
 import type { MapBoardCellViewModel } from "./map-board-v2.types";
 
@@ -7,6 +7,9 @@ interface MapBoardV2GridProps {
   columnCount: number;
   onActivateCell: (cell: MapBoardCellViewModel) => void;
   onSelectCell: (key: string) => void;
+  cellSize?: number;
+  className?: string;
+  style?: CSSProperties;
 }
 
 export function MapBoardV2Grid({
@@ -14,14 +17,25 @@ export function MapBoardV2Grid({
   columnCount,
   onActivateCell,
   onSelectCell,
+  cellSize,
+  className,
+  style,
 }: MapBoardV2GridProps) {
   function handleContextMenu(event: MouseEvent<HTMLButtonElement>, key: string) {
     event.preventDefault();
     onSelectCell(key);
   }
 
+  const gridStyle = {
+    gridTemplateColumns: `repeat(${columnCount}, var(--map2-cell-size, 56px))`,
+    ...(cellSize ? { "--map2-cell-size": `${cellSize}px` } : null),
+    ...style,
+  } as CSSProperties;
+  const densityClassName =
+    cellSize !== undefined && cellSize < 22 ? "map2-grid-tiny" : cellSize !== undefined && cellSize < 30 ? "map2-grid-compact" : "";
+
   return (
-    <div className="map2-grid" style={{ gridTemplateColumns: `repeat(${columnCount}, var(--map2-cell-size, 56px))` }}>
+    <div className={["map2-grid", densityClassName, className].filter(Boolean).join(" ")} style={gridStyle}>
       {cells.map((cell) => (
         <button
           key={cell.key}

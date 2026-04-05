@@ -301,6 +301,7 @@ summary {
 .product-shell-map .product-shell-body {
   width: calc(100vw - 24px);
   max-width: none;
+  min-height: calc(100vh - 72px);
 }
 
 .product-topbar {
@@ -721,11 +722,18 @@ summary {
 .product-map-stage {
   width: 100%;
   display: grid;
-  gap: 24px;
-  padding: 18px 0 36px;
+  min-height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 0 0 24px;
 }
 
 .product-map-toolbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -769,17 +777,38 @@ summary {
 }
 
 .product-map-grid-wrap {
-  --map2-cell-size: 64px;
   position: relative;
   width: 100%;
-  min-height: calc(100vh - 180px);
-  padding: 88px 112px 112px;
+  min-height: 0;
   display: grid;
-  place-items: center;
+  overflow: hidden;
   background:
     radial-gradient(circle at center, rgba(251, 188, 0, 0.06), transparent 34%),
     linear-gradient(180deg, rgba(12, 14, 17, 0.92), rgba(12, 14, 17, 0.98));
-  overflow: auto;
+  border: 1px solid rgba(143, 144, 148, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 18px 34px rgba(0, 0, 0, 0.24);
+}
+
+.product-map-board-viewport {
+  width: 100%;
+  min-height: calc(100vh - 112px);
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.product-map-grid-wrap.is-focus .product-map-board-viewport {
+  cursor: grab;
+  touch-action: none;
+}
+
+.product-map-grid-wrap.is-focus.is-dragging .product-map-board-viewport {
+  cursor: grabbing;
 }
 
 .product-map-grid-wrap .map2-grid {
@@ -835,11 +864,13 @@ summary {
   background: rgba(12, 14, 17, 0.92);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.3);
   min-width: 220px;
+  backdrop-filter: blur(10px);
+  z-index: 3;
 }
 
 .product-map-overlay-upgrades {
-  left: 24px;
-  bottom: 24px;
+  left: 16px;
+  bottom: 16px;
   padding: 16px;
 }
 
@@ -876,15 +907,15 @@ summary {
 }
 
 .product-map-overlay-stats {
-  right: 24px;
-  bottom: 24px;
+  right: 16px;
+  bottom: 16px;
   display: grid;
   grid-template-columns: repeat(2, minmax(92px, 1fr));
 }
 
 .product-map-overlay-details {
-  top: 24px;
-  right: 24px;
+  top: 72px;
+  right: 16px;
   min-width: 260px;
   max-width: 300px;
   padding: 16px;
@@ -999,21 +1030,26 @@ summary {
 }
 
 .product-upgrade-sheet {
-  position: fixed;
-  inset: auto 0 0;
-  z-index: 30;
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 5;
+  width: min(680px, calc(100% - 320px));
+  transform: translateX(-50%);
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: 0;
+  pointer-events: none;
 }
 
 .product-upgrade-sheet-card {
-  width: min(760px, calc(100vw - 32px));
+  width: 100%;
   display: grid;
   gap: 16px;
   padding: 20px;
   background: rgba(12, 14, 17, 0.96);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
 .product-upgrade-choice-grid {
@@ -1190,19 +1226,19 @@ summary {
   }
 
   .product-map-toolbar {
-    display: none;
+    position: static;
+    gap: 8px;
   }
 
   .product-map-grid-wrap {
-    --map2-cell-size: 34px;
     width: 100%;
     min-height: 0;
-    padding: 18px 0 24px;
     background: transparent;
   }
 
-  .product-map-grid-wrap .map2-grid {
-    max-width: 100%;
+  .product-map-board-viewport {
+    min-height: min(62vh, 420px);
+    padding: 10px;
   }
 
   .product-map-overlay {
@@ -1231,6 +1267,14 @@ summary {
 
   .product-map-overlay-details {
     max-width: none;
+  }
+
+  .product-upgrade-sheet {
+    position: static;
+    width: 100%;
+    transform: none;
+    padding: 0;
+    pointer-events: auto;
   }
 
   .product-mobile-controls {
@@ -1904,11 +1948,45 @@ summary {
 
 .map2-grid {
   --map2-cell-size: 54px;
+  --map2-stroke: clamp(1px, calc(var(--map2-cell-size) * 0.045), 3px);
+  --map2-stroke-strong: clamp(1px, calc(var(--map2-cell-size) * 0.08), 4px);
+  --map2-inset-sm: clamp(1px, calc(var(--map2-cell-size) * 0.07), 4px);
+  --map2-inset-md: clamp(2px, calc(var(--map2-cell-size) * 0.11), 6px);
+  --map2-dot-size: clamp(4px, calc(var(--map2-cell-size) * 0.13), 8px);
+  --map2-token-radius: clamp(6px, calc(var(--map2-cell-size) * 0.26), 16px);
+  --map2-token-shadow: 0 calc(var(--map2-cell-size) * 0.11) calc(var(--map2-cell-size) * 0.26) rgba(0, 0, 0, 0.26);
+  --map2-badge-offset: clamp(1px, calc(var(--map2-cell-size) * 0.055), 4px);
+  --map2-badge-padding-y: clamp(1px, calc(var(--map2-cell-size) * 0.045), 3px);
+  --map2-badge-padding-x: clamp(3px, calc(var(--map2-cell-size) * 0.1), 6px);
+  --map2-badge-font-size: clamp(7px, calc(var(--map2-cell-size) * 0.18), 12px);
+  --map2-badge-min-width: clamp(12px, calc(var(--map2-cell-size) * 0.42), 24px);
+  --map2-token-font-size: clamp(8px, calc(var(--map2-cell-size) * 0.3), 16px);
+  --map2-token-font-size-sm: clamp(7px, calc(var(--map2-cell-size) * 0.26), 14px);
+  --map2-token-scale: 1;
   display: grid;
   gap: 2px;
   padding: 2px;
   background: #000;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+}
+
+.map2-grid.map2-grid-compact {
+  --map2-badge-padding-y: 1px;
+  --map2-badge-padding-x: clamp(2px, calc(var(--map2-cell-size) * 0.08), 4px);
+  --map2-badge-font-size: clamp(6px, calc(var(--map2-cell-size) * 0.16), 9px);
+  --map2-badge-min-width: clamp(10px, calc(var(--map2-cell-size) * 0.34), 16px);
+  --map2-token-scale: 0.94;
+}
+
+.map2-grid.map2-grid-tiny {
+  --map2-badge-padding-y: 0;
+  --map2-badge-padding-x: 2px;
+  --map2-badge-font-size: clamp(6px, calc(var(--map2-cell-size) * 0.14), 8px);
+  --map2-badge-min-width: clamp(9px, calc(var(--map2-cell-size) * 0.28), 12px);
+  --map2-badge-offset: 1px;
+  --map2-token-font-size: clamp(7px, calc(var(--map2-cell-size) * 0.24), 10px);
+  --map2-token-font-size-sm: clamp(6px, calc(var(--map2-cell-size) * 0.2), 9px);
+  --map2-token-scale: 0.88;
 }
 
 .map2-cell {
@@ -1924,8 +2002,8 @@ summary {
 }
 
 .map2-cell.is-selected {
-  outline: 3px solid #fff7b8;
-  outline-offset: -2px;
+  outline: var(--map2-stroke-strong) solid #fff7b8;
+  outline-offset: calc(var(--map2-stroke) * -1);
   z-index: 2;
 }
 
@@ -1976,10 +2054,10 @@ summary {
 }
 
 .map2-cell-visited .map2-cell-base::after {
-  top: 4px;
-  right: 4px;
-  width: 7px;
-  height: 7px;
+  top: var(--map2-inset-sm);
+  right: var(--map2-inset-sm);
+  width: var(--map2-dot-size);
+  height: var(--map2-dot-size);
   border-radius: 999px;
   background: rgba(210, 248, 214, 0.82);
   box-shadow: 0 0 0 1px rgba(30, 66, 38, 0.28);
@@ -1991,9 +2069,9 @@ summary {
 }
 
 .map2-cell-portal-prompt .map2-cell-base::after {
-  inset: 3px;
-  border: 2px solid rgba(148, 230, 255, 0.72);
-  border-radius: 6px;
+  inset: var(--map2-inset-sm);
+  border: var(--map2-stroke) solid rgba(148, 230, 255, 0.72);
+  border-radius: clamp(4px, calc(var(--map2-cell-size) * 0.12), 6px);
   background: transparent;
   box-shadow:
     0 0 0 1px rgba(31, 111, 145, 0.16),
@@ -2006,19 +2084,19 @@ summary {
 }
 
 .map2-cell-shroom-danger .map2-cell-base::after {
-  inset: 4px;
-  top: 4px;
+  inset: var(--map2-inset-md);
+  top: var(--map2-inset-md);
   left: auto;
-  right: 4px;
+  right: var(--map2-inset-md);
   bottom: auto;
-  width: 12px;
-  height: 12px;
+  width: clamp(8px, calc(var(--map2-cell-size) * 0.24), 14px);
+  height: clamp(8px, calc(var(--map2-cell-size) * 0.24), 14px);
   display: grid;
   place-items: center;
   content: "";
   border-radius: 3px;
   background:
-    center / 12px 12px no-repeat
+    center / contain no-repeat
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffd8a8' stroke='%23804412' stroke-width='1.4' d='M12 3L22 21H2L12 3Z'/%3E%3Crect x='11' y='9' width='2' height='6' rx='1' fill='%23804412'/%3E%3Ccircle cx='12' cy='18' r='1.2' fill='%23804412'/%3E%3C/svg%3E");
   box-shadow: none;
 }
@@ -2052,12 +2130,12 @@ summary {
   top: 50%;
   width: 62%;
   height: 62%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--map2-token-scale));
   display: grid;
   place-items: center;
-  border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.26);
+  border-radius: var(--map2-token-radius);
+  border: var(--map2-stroke) solid rgba(255, 255, 255, 0.15);
+  box-shadow: var(--map2-token-shadow);
 }
 
 .map2-token::before {
@@ -2066,7 +2144,7 @@ summary {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 1.4rem;
+  font-size: clamp(9px, calc(var(--map2-cell-size) * 0.32), 22px);
   font-weight: 900;
   opacity: 0;
   pointer-events: none;
@@ -2074,38 +2152,38 @@ summary {
 
 .map2-token-badge {
   position: absolute;
-  min-width: 24px;
-  padding: 3px 6px;
+  min-width: var(--map2-badge-min-width);
+  padding: var(--map2-badge-padding-y) var(--map2-badge-padding-x);
   border-radius: 999px;
   background: rgba(8, 12, 18, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: #f8fbff;
-  font-size: 0.76rem;
+  font-size: var(--map2-badge-font-size);
   line-height: 1;
   font-weight: 800;
   letter-spacing: 0.03em;
   text-align: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 calc(var(--map2-cell-size) * 0.08) calc(var(--map2-cell-size) * 0.18) rgba(0, 0, 0, 0.24);
 }
 
 .map2-token-badge-nw {
-  top: 3px;
-  left: 3px;
+  top: var(--map2-badge-offset);
+  left: var(--map2-badge-offset);
 }
 
 .map2-token-badge-ne {
-  top: 3px;
-  right: 3px;
+  top: var(--map2-badge-offset);
+  right: var(--map2-badge-offset);
 }
 
 .map2-token-badge-sw {
-  left: 3px;
-  bottom: 3px;
+  left: var(--map2-badge-offset);
+  bottom: var(--map2-badge-offset);
 }
 
 .map2-token-badge-se {
-  right: 3px;
-  bottom: 3px;
+  right: var(--map2-badge-offset);
+  bottom: var(--map2-badge-offset);
 }
 
 .map2-token-badge-danger {
@@ -2169,7 +2247,7 @@ summary {
 }
 
 .map2-token-core {
-  font-size: 1rem;
+  font-size: var(--map2-token-font-size);
   font-weight: 800;
   letter-spacing: 0.04em;
   color: #fff;
@@ -2196,7 +2274,7 @@ summary {
 }
 
 .map2-entity-player .map2-token-core {
-  font-size: 0.88rem;
+  font-size: var(--map2-token-font-size-sm);
   font-weight: 900;
 }
 
@@ -2257,7 +2335,7 @@ summary {
 }
 
 .map2-entity-stairs .map2-token {
-  border-radius: 12px;
+  border-radius: clamp(5px, calc(var(--map2-cell-size) * 0.2), 12px);
   background:
     linear-gradient(180deg, #fff4a3 0%, #e0b84f 100%);
   border-color: #46310a;
@@ -2293,7 +2371,7 @@ summary {
 }
 
 .map2-entity-breakable .map2-token {
-  border-radius: 10px;
+  border-radius: clamp(4px, calc(var(--map2-cell-size) * 0.18), 10px);
   background:
     linear-gradient(180deg, #9b7750 0%, #6d4d2d 100%);
   border-color: #f2d3ab;
@@ -2303,7 +2381,7 @@ summary {
 }
 
 .map2-entity-chest .map2-token {
-  border-radius: 12px;
+  border-radius: clamp(5px, calc(var(--map2-cell-size) * 0.2), 12px);
   background:
     linear-gradient(180deg, #ffe6a3 0%, #c6902d 100%);
   border-color: #3f2a0a;
@@ -2338,7 +2416,7 @@ summary {
 }
 
 .map2-entity-pickup-treasure .map2-token {
-  border-radius: 12px;
+  border-radius: clamp(5px, calc(var(--map2-cell-size) * 0.2), 12px);
   background:
     linear-gradient(180deg, #fff1bf 0%, #e1aa2d 100%);
   border-color: #4a3104;
@@ -2414,7 +2492,7 @@ summary {
 
 .map2-entity-chest .map2-token-core,
 .map2-entity-stairs .map2-token-core {
-  font-size: 1.02rem;
+  font-size: clamp(8px, calc(var(--map2-cell-size) * 0.31), 16px);
 }
 
 .map2-entity-portal .map2-token-core {
@@ -2423,19 +2501,21 @@ summary {
 }
 
 .map2-hint-move {
-  box-shadow: inset 0 0 0 2px #ffffff;
+  box-shadow: inset 0 0 0 var(--map2-stroke) #ffffff;
 }
 
 .map2-hint-attack {
-  box-shadow: inset 0 0 0 2px #000000, inset 0 0 0 4px #ffffff;
+  box-shadow:
+    inset 0 0 0 var(--map2-stroke) #000000,
+    inset 0 0 0 calc(var(--map2-stroke) * 2) #ffffff;
 }
 
 .map2-hint-break {
-  box-shadow: inset 0 0 0 2px #d9d9d9;
+  box-shadow: inset 0 0 0 var(--map2-stroke) #d9d9d9;
 }
 
 .map2-hint-blocked {
-  box-shadow: inset 0 0 0 2px #5a5a5a;
+  box-shadow: inset 0 0 0 var(--map2-stroke) #5a5a5a;
 }
 
 .map2-fog-hidden .map2-cell-pattern,
