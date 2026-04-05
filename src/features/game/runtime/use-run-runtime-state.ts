@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { GameStateSnapshot } from "../game.types";
+import type { GamePlayerSnapshot, GameStateSnapshot } from "../game.types";
 import { parseLatestPortalPromptEvent } from "./game-event-parsers";
 
 export interface RuntimeActionMetrics {
@@ -19,6 +19,10 @@ export interface RuntimePortalPrompt {
   playerTreasure: number | null;
   playerX: number;
   playerY: number;
+}
+
+interface OptimisticPlayerPosition extends Pick<GamePlayerSnapshot, "x" | "y"> {
+  runId: string;
 }
 
 function parseLatestPortalPrompt(
@@ -42,6 +46,7 @@ export function useRunRuntimeState() {
   const [localGameState, setLocalGameState] = useState<GameStateSnapshot | null>(null);
   const [lastMoveEvents, setLastMoveEvents] = useState<Record<string, unknown>[]>([]);
   const [portalPrompt, setPortalPrompt] = useState<RuntimePortalPrompt | null>(null);
+  const [optimisticPlayerPosition, setOptimisticPlayerPosition] = useState<OptimisticPlayerPosition | null>(null);
   const [metrics, setMetrics] = useState<RuntimeActionMetrics>({
     lastActionLatencyMs: null,
     lastActionName: null,
@@ -51,6 +56,7 @@ export function useRunRuntimeState() {
   const replaceLocalGameState = useCallback((nextState: GameStateSnapshot | null) => {
     localGameStateRef.current = nextState;
     setLocalGameState(nextState);
+    setOptimisticPlayerPosition(null);
     setPortalPrompt((current) => {
       if (!current || !nextState?.player) return current;
       return nextState.player.x === current.playerX && nextState.player.y === current.playerY ? current : null;
@@ -66,6 +72,14 @@ export function useRunRuntimeState() {
     setLastMoveEvents([]);
   }, []);
 
+  const showOptimisticPlayerPosition = useCallback((position: OptimisticPlayerPosition) => {
+    setOptimisticPlayerPosition(position);
+  }, []);
+
+  const clearOptimisticPlayerPosition = useCallback(() => {
+    setOptimisticPlayerPosition(null);
+  }, []);
+
   const recordActionMetrics = useCallback((actionName: string, startedAtMs: number) => {
     setMetrics({
       lastActionLatencyMs: Math.max(0, Math.round(performance.now() - startedAtMs)),
@@ -78,10 +92,13 @@ export function useRunRuntimeState() {
     localGameStateRef,
     lastMoveEvents,
     portalPrompt,
+    optimisticPlayerPosition,
     metrics,
     replaceLocalGameState,
     replaceLastMoveEvents,
     clearLastMoveEvents,
+    showOptimisticPlayerPosition,
+    clearOptimisticPlayerPosition,
     recordActionMetrics,
   };
 }

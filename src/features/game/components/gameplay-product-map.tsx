@@ -169,6 +169,26 @@ function ProductMapToolbar({
       <div className="product-map-toolbar-group product-map-toolbar-group-spacer" />
 
       <div className="product-map-toolbar-group">
+        <span className="product-map-toolbar-meta">Movement</span>
+        <button
+          type="button"
+          className={`product-map-toolbar-button ${model.gameplayFeelMode === "standard" ? "is-active" : ""}`}
+          onClick={() => model.setGameplayFeelMode("standard")}
+          title="Default movement rendering with no predictive preview."
+        >
+          Accurate
+        </button>
+        <button
+          type="button"
+          className={`product-map-toolbar-button ${model.gameplayFeelMode === "preview" ? "is-active" : ""}`}
+          onClick={() => model.setGameplayFeelMode("preview")}
+          title="Experimental instant movement preview. Server state remains authoritative."
+        >
+          Instant
+        </button>
+      </div>
+
+      <div className="product-map-toolbar-group">
         <span className="product-map-toolbar-meta">
           Floor {model.gameplay.runState?.currentFloor ?? "-"} / Turn {model.gameplay.runState?.turnNumber ?? "-"}
         </span>
@@ -319,6 +339,7 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
 
   const mapModel = useMapBoardV2Model({
     gameState: runState,
+    optimisticPlayerPosition: model.gameplay.optimisticPlayerPosition,
     moveEvents: model.gameplay.lastMoveEvents,
     portalPrompt: model.gameplay.portalPrompt,
     onDirectionalAction: model.gameplay.controls.handleMove,

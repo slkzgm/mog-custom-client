@@ -120,6 +120,7 @@ function resolveCellAction(params: {
 
 export function useMapBoardV2Model({
   gameState,
+  optimisticPlayerPosition = null,
   moveEvents = [],
   portalPrompt = null,
   onDirectionalAction,
@@ -130,6 +131,7 @@ export function useMapBoardV2Model({
 }: Pick<
   MapBoardV2Props,
   | "gameState"
+  | "optimisticPlayerPosition"
   | "moveEvents"
   | "portalPrompt"
   | "onDirectionalAction"
@@ -156,29 +158,41 @@ export function useMapBoardV2Model({
   const fogMemory = useMapFogMemory(gameState, isMapFogMemoryEnabled);
   const mapSnapshotProbe = useMapSnapshotProbe(gameState, isMapSnapshotProbeEnabled);
   const visitedCells = useMapVisitedCells(gameState, isMapVisitedCellsEnabled);
+  const displayGameState = useMemo(() => {
+    if (!optimisticPlayerPosition || !gameState.player) return gameState;
+
+    return {
+      ...gameState,
+      player: {
+        ...gameState.player,
+        x: optimisticPlayerPosition.x,
+        y: optimisticPlayerPosition.y,
+      },
+    };
+  }, [gameState, optimisticPlayerPosition]);
 
   const effectiveFocusOffset = useMemo(
     () => (focusOffsetState.turnKey === currentTurnKey ? focusOffsetState.offset : { x: 0, y: 0 }),
     [currentTurnKey, focusOffsetState.offset, focusOffsetState.turnKey],
   );
   const viewport = useMemo(
-    () => buildViewport(gameState, viewMode, focusRadius, effectiveFocusOffset),
-    [effectiveFocusOffset, focusRadius, gameState, viewMode],
+    () => buildViewport(displayGameState, viewMode, focusRadius, effectiveFocusOffset),
+    [displayGameState, effectiveFocusOffset, focusRadius, viewMode],
   );
   const entityLookups = useMemo(() => buildEntityPositionLookups(gameState), [gameState]);
-  const hintsByKey = useMemo(() => buildHints(gameState), [gameState]);
+  const hintsByKey = useMemo(() => buildHints(displayGameState), [displayGameState]);
   const xValues = useMemo(() => buildRange(viewport.minX, viewport.maxX), [viewport.maxX, viewport.minX]);
   const yValues = useMemo(() => buildRange(viewport.minY, viewport.maxY), [viewport.maxY, viewport.minY]);
   const focusWindowSize = focusRadius * 2 + 1;
-  const fallbackKey = gameState.player ? keyOf(gameState.player.x, gameState.player.y) : null;
+  const fallbackKey = displayGameState.player ? keyOf(displayGameState.player.x, displayGameState.player.y) : null;
   const activeSelectedKey = selectedKey ?? fallbackKey;
   const selectedEnemy = activeSelectedKey ? entityLookups.enemyByKey.get(activeSelectedKey) ?? null : null;
 
   const playerPortal = useMemo(() => {
-    const player = gameState.player;
+    const player = displayGameState.player;
     if (!player) return null;
     return entityLookups.portalByKey.get(keyOf(player.x, player.y)) ?? null;
-  }, [entityLookups.portalByKey, gameState.player]);
+  }, [displayGameState.player, entityLookups.portalByKey]);
   const latestPortalPrompt = useMemo(
     () => portalPrompt ?? parseLatestPortalPromptEvent(moveEvents),
     [moveEvents, portalPrompt],
@@ -209,17 +223,17 @@ export function useMapBoardV2Model({
     return shroomChargingEvents.find((event) => event.enemyId === selectedEnemy.id) ?? null;
   }, [selectedEnemy, shroomChargingEvents]);
   const selectedEnemyNextMoveDirection = useMemo(
-    () => (selectedEnemy ? predictEnemyNextMoveDirection(gameState, selectedEnemy) : null),
-    [gameState, selectedEnemy],
+    () => (selectedEnemy ? predictEnemyNextMoveDirection(displayGameState, selectedEnemy) : null),
+    [displayGameState, selectedEnemy],
   );
   const selectedEnemyIntentText = useMemo(
     () =>
       selectedEnemyShroomCharge
         ? `line attack ${selectedEnemyShroomCharge.direction}`
         : selectedEnemy
-          ? selectedEnemyIntent(gameState, selectedEnemy)
+          ? selectedEnemyIntent(displayGameState, selectedEnemy)
           : null,
-    [gameState, selectedEnemy, selectedEnemyShroomCharge],
+    [displayGameState, selectedEnemy, selectedEnemyShroomCharge],
   );
 
   const cells = useMemo(() => {
@@ -228,11 +242,11 @@ export function useMapBoardV2Model({
     for (const y of yValues) {
       for (const x of xValues) {
         const key = keyOf(x, y);
-        const currentFog = fogStateAt(gameState, x, y);
+        const currentFog = fogStateAt(displayGameState, x, y);
         const fog =
           currentFog !== "visible" && fogMemory.rememberedCoordinates.has(key) ? "remembered" : currentFog;
-        const tile = tileKindAtWithLookups(gameState, x, y, entityLookups);
-        const currentEntity = resolveEntityWithLookups(gameState, x, y, entityLookups);
+        const tile = tileKindAtWithLookups(displayGameState, x, y, entityLookups);
+        const currentEntity = resolveEntityWithLookups(displayGameState, x, y, entityLookups);
         const rememberedEntity = entityMemory.rememberedEntities.get(key);
         const isVisited = visitedCells.visitedCoordinates.has(key);
         const shroomDanger = shroomDangerTiles.get(key) ?? null;
@@ -245,7 +259,7 @@ export function useMapBoardV2Model({
         const entity = withPortalPromptBadge(rawEntity, portalCostText, isVisited);
         const hint = hintsByKey.get(key) ?? null;
         const isSelected = key === activeSelectedKey;
-        const isPlayerTile = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
+        const isPlayerTile = Boolean(displayGameState.player && displayGameState.player.x === x && displayGameState.player.y === y);
         const portalAtCell = entityLookups.portalByKey.get(key) ?? null;
         const action = resolveCellAction({
           hint,
@@ -292,8 +306,8 @@ export function useMapBoardV2Model({
     activeSelectedKey,
     entityMemory.rememberedEntities,
     entityLookups,
+    displayGameState,
     fogMemory.rememberedCoordinates,
-    gameState,
     hintsByKey,
     isActionLocked,
     isPortalActionDisabled,

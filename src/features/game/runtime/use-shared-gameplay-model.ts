@@ -6,6 +6,7 @@ interface UseSharedGameplayModelOptions {
   enabled?: boolean;
   runType?: RunType;
   includeDerivedState?: boolean;
+  enableOptimisticPlayerPreview?: boolean;
 }
 
 export function useSharedGameplayModel(options: UseSharedGameplayModelOptions = {}) {
@@ -26,6 +27,7 @@ export function useSharedGameplayModel(options: UseSharedGameplayModelOptions = 
     canEstimateNextRerollCost: runSession.canEstimateNextRerollCost,
     pendingUpgradeOptions: runSession.pendingUpgradeOptions,
     isRefreshDisabled: runSession.isRefreshDisabled,
+    enableOptimisticPlayerPreview: options.enableOptimisticPlayerPreview ?? false,
   });
 
   return {
@@ -34,6 +36,10 @@ export function useSharedGameplayModel(options: UseSharedGameplayModelOptions = 
     runState: runSession.effectiveGameState,
     lastMoveEvents: runSession.runtimeState.lastMoveEvents,
     portalPrompt: runSession.runtimeState.portalPrompt,
+    optimisticPlayerPosition:
+      runSession.runtimeState.optimisticPlayerPosition?.runId === runSession.effectiveGameState?.runId
+        ? runSession.runtimeState.optimisticPlayerPosition
+        : null,
     isActionLocked: runSession.hasPendingUpgradeSelection || runActions.isAnyActionPending,
     hotkeysDisabled: runActions.hotkeysDisabled,
     upgrades: {

@@ -41,7 +41,7 @@ export function useRunActionsController(
     | "canEstimateNextRerollCost"
     | "pendingUpgradeOptions"
     | "isRefreshDisabled"
-  >,
+  > & { enableOptimisticPlayerPreview: boolean },
 ) {
   const runMoveMutation = useRunMoveMutation();
   const runTeleportMutation = useRunTeleportMutation();
@@ -118,6 +118,11 @@ export function useRunActionsController(
     },
     [runSession.runtimeState.portalPrompt],
   );
+
+  useEffect(() => {
+    if (runSession.enableOptimisticPlayerPreview) return;
+    runSession.runtimeState.clearOptimisticPlayerPosition();
+  }, [runSession]);
 
   const validateMove = useCallback(
     (direction: MoveDirection): string | null => {
@@ -253,23 +258,44 @@ export function useRunActionsController(
           return;
         }
 
-        const result = await runMoveMutation.mutateAsync({
-          runId: queuedRunId,
-          direction,
-          actionType: attackableEnemy ? "attack" : breakableInteractive ? "break" : "move",
-          targetEnemyId: attackableEnemy?.id ?? undefined,
-          targetId: attackableEnemy ? undefined : breakableInteractive?.id ?? undefined,
-          targetX: attackableEnemy || breakableInteractive ? undefined : target.targetX,
-          targetY: attackableEnemy || breakableInteractive ? undefined : target.targetY,
-        });
-
-        if (result.gameState) {
-          runSession.runtimeState.replaceLocalGameState(result.gameState);
+        const isOptimisticSimpleMove =
+          runSession.enableOptimisticPlayerPreview && !attackableEnemy && !breakableInteractive;
+        if (isOptimisticSimpleMove) {
+          runSession.runtimeState.showOptimisticPlayerPosition({
+            runId: queuedRunId,
+            x: target.targetX,
+            y: target.targetY,
+          });
         }
-        runSession.runtimeState.replaceLastMoveEvents(result.events);
+
+        try {
+          const result = await runMoveMutation.mutateAsync({
+            runId: queuedRunId,
+            direction,
+            actionType: attackableEnemy ? "attack" : breakableInteractive ? "break" : "move",
+            targetEnemyId: attackableEnemy?.id ?? undefined,
+            targetId: attackableEnemy ? undefined : breakableInteractive?.id ?? undefined,
+            targetX: attackableEnemy || breakableInteractive ? undefined : target.targetX,
+            targetY: attackableEnemy || breakableInteractive ? undefined : target.targetY,
+          });
+
+          if (result.gameState) {
+            runSession.runtimeState.replaceLocalGameState(result.gameState);
+          }
+          runSession.runtimeState.replaceLastMoveEvents(result.events);
+        } finally {
+          runSession.runtimeState.clearOptimisticPlayerPosition();
+        }
       });
     },
-    [findDirectionalPortalTarget, runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState, runTeleportMutation],
+    [
+      findDirectionalPortalTarget,
+      runMoveMutation,
+      runQueuedRuntimeAction,
+      runSession.enableOptimisticPlayerPreview,
+      runSession.runtimeState,
+      runTeleportMutation,
+    ],
   );
 
   const executePass = useCallback(async () => {

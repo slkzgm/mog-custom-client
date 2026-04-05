@@ -8,20 +8,39 @@ import { useItemBalanceQuery } from "../use-item-balance-query";
 import { useBuyKeysController } from "./use-buy-keys-controller";
 import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
+const GAMEPLAY_FEEL_STORAGE_KEY = "mog.gameplay-feel-mode.v1";
+
+type GameplayFeelMode = "standard" | "preview";
+
+function loadGameplayFeelMode(): GameplayFeelMode {
+  if (typeof window === "undefined") return "standard";
+
+  try {
+    const stored = window.localStorage.getItem(GAMEPLAY_FEEL_STORAGE_KEY);
+    return stored === "preview" ? "preview" : "standard";
+  } catch {
+    return "standard";
+  }
+}
+
 export function useGameplayProductScreenModel() {
   const auth = useAuthController();
   const [selectedRunType, setSelectedRunType] = useState<RunType>("NORMAL");
   const [currentView, setCurrentView] = useState<"menu" | "run">("menu");
+  const [gameplayFeelMode, setGameplayFeelModeState] = useState<GameplayFeelMode>(loadGameplayFeelMode);
+  const enableOptimisticPlayerPreview = gameplayFeelMode === "preview";
 
   const normalGameplay = useSharedGameplayModel({
     enabled: auth.isAuthenticated,
     runType: "NORMAL",
     includeDerivedState: false,
+    enableOptimisticPlayerPreview,
   });
   const worldGameplay = useSharedGameplayModel({
     enabled: auth.isAuthenticated,
     runType: "WORLD",
     includeDerivedState: false,
+    enableOptimisticPlayerPreview,
   });
   const amberBalanceQuery = useItemBalanceQuery("amber", auth.isAuthenticated);
   const claimsQuery = useClaimsQuery(auth.isAuthenticated);
@@ -85,6 +104,18 @@ export function useGameplayProductScreenModel() {
     setCurrentView("run");
   }
 
+  function setGameplayFeelMode(nextMode: GameplayFeelMode) {
+    setGameplayFeelModeState(nextMode);
+
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(GAMEPLAY_FEEL_STORAGE_KEY, nextMode);
+      } catch {
+        // Best-effort local preference only.
+      }
+    }
+  }
+
   return {
     auth,
     amberBalanceQuery,
@@ -104,6 +135,9 @@ export function useGameplayProductScreenModel() {
     shouldShowChainSwitch,
     shouldShowSignIn,
     shouldShowLobby,
+    gameplayFeelMode,
+    enableOptimisticPlayerPreview,
+    setGameplayFeelMode,
     openMenu,
     openRun,
   };

@@ -1,5 +1,5 @@
 import type { EntityCornerBadge } from "../map-enemy-visuals";
-import type { GameStateSnapshot, MoveDirection } from "../game.types";
+import type { GamePlayerSnapshot, GameStateSnapshot, MoveDirection } from "../game.types";
 import type { PortalPromptEvent, ShroomTargetTile } from "../runtime/game-event-parsers";
 
 export type ViewMode = "focus" | "full";
@@ -10,6 +10,7 @@ export type EntityKind = "player" | "enemy" | "interactive" | "pickup" | "trap" 
 
 export interface MapBoardV2Props {
   gameState: GameStateSnapshot;
+  optimisticPlayerPosition?: Pick<GamePlayerSnapshot, "x" | "y"> | null;
   moveEvents?: Record<string, unknown>[];
   portalPrompt?: PortalPromptEvent | null;
   onDirectionalAction?: (direction: MoveDirection) => void | Promise<void>;
