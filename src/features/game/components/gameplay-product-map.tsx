@@ -14,7 +14,13 @@ import { useMapBoardV2Model } from "./use-map-board-v2-model";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { getRunModeRewardValue } from "../game-modes";
 import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
-import { getUpgradeUiDescription, getUpgradeUiDurationText, getUpgradeUiFloorsLeft, getUpgradeUiLabel } from "../upgrade-ui-catalog";
+import {
+  getUpgradeUiDescription,
+  getUpgradeUiDurationText,
+  getUpgradeUiFloorsLeft,
+  getUpgradeUiLabel,
+  isUpgradeUiCurrentlyActive,
+} from "../upgrade-ui-catalog";
 import { clamp, parseCoordinateKey } from "./map-board-v2.utils";
 
 interface GameplayProductMapProps {
@@ -373,7 +379,13 @@ function ProductMapToolbar({
 
 function ProductMapHud({ model }: GameplayProductMapProps) {
   const player = model.gameplay.runState?.player;
-  const upgrades = player?.upgrades ?? [];
+  const upgrades =
+    player?.upgrades.filter((upgrade) =>
+      isUpgradeUiCurrentlyActive(upgrade, {
+        gameState: model.gameplay.runState,
+        player,
+      }),
+    ) ?? [];
   const rewardLabel = model.gameplay.runSession.mode.rewardLabel;
   const rewardValue = getRunModeRewardValue(model.gameplay.runSession.runType, player);
 
@@ -482,7 +494,13 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
   const player = model.gameplay.runState?.player;
   const rewardLabel = model.gameplay.runSession.mode.rewardLabel;
   const rewardValue = getRunModeRewardValue(model.gameplay.runSession.runType, player);
-  const activeUpgrades = player?.upgrades ?? [];
+  const activeUpgrades =
+    player?.upgrades.filter((upgrade) =>
+      isUpgradeUiCurrentlyActive(upgrade, {
+        gameState: model.gameplay.runState,
+        player,
+      }),
+    ) ?? [];
 
   return (
     <section className="product-upgrade-sheet">

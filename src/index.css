@@ -1448,12 +1448,8 @@ summary {
   .product-upgrade-list {
     display: flex;
     gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .product-upgrade-list::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap;
+    overflow: visible;
   }
 
   .product-upgrade-list li {
@@ -1518,13 +1514,8 @@ summary {
   }
 
   .product-upgrade-sheet-active-list {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .product-upgrade-sheet-active-list::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap;
+    overflow: visible;
   }
 
   .product-upgrade-sheet-active-pill {

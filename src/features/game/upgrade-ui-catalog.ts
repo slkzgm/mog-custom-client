@@ -726,6 +726,51 @@ export function getUpgradeUiFloorsLeft(
   return floorsLeft > 0 ? floorsLeft : null;
 }
 
+function readBuffRuntimeValue(
+  buffsRaw: Pick<GamePlayerSnapshot, "buffsRaw">["buffsRaw"] | null | undefined,
+  key: string,
+): unknown {
+  if (!buffsRaw) return null;
+  if (!key.includes(".")) return buffsRaw[key];
+
+  return key.split(".").reduce<unknown>((current, part) => {
+    if (!current || typeof current !== "object") return null;
+    return (current as Record<string, unknown>)[part];
+  }, buffsRaw);
+}
+
+export function isUpgradeUiCurrentlyActive(
+  upgradeId: string,
+  params: {
+    gameState?: Pick<GameStateSnapshot, "currentFloor" | "upgradesPerFloor"> | null | undefined;
+    player?: Pick<GamePlayerSnapshot, "buffsRaw"> | null | undefined;
+  },
+): boolean {
+  const catalogEntry = getUpgradeCatalogEntry(upgradeId);
+  if (!catalogEntry) return true;
+
+  if (catalogEntry.effectKind === "instant") return false;
+  if (catalogEntry.effectKind === "passive") return true;
+  if (getUpgradeUiFloorsLeft(upgradeId, params) !== null) return true;
+
+  const verifiedEntry = getVerifiedUpgradeCatalogEntry(upgradeId);
+  const runtimeKeys = new Set<string>([
+    ...(verifiedEntry ? Object.values(verifiedEntry.runtimeTooltipParamStateKeys) : []),
+    ...(verifiedEntry?.runtimeActiveStateKeys ?? []),
+    ...catalogEntry.observedBuffKeys,
+  ]);
+
+  for (const runtimeKey of runtimeKeys) {
+    const rawValue = readBuffRuntimeValue(params.player?.buffsRaw, runtimeKey);
+
+    if (typeof rawValue === "boolean" && rawValue) return true;
+    if (typeof rawValue === "number" && Number.isFinite(rawValue) && rawValue > 0) return true;
+    if (typeof rawValue === "string" && rawValue.trim()) return true;
+  }
+
+  return false;
+}
+
 export function getUpgradeUiDurationLabel(upgradeId: string): string | null {
   const catalogEntry = getUpgradeCatalogEntry(upgradeId);
   if (!catalogEntry?.durationUnit || typeof catalogEntry.durationValue !== "number" || catalogEntry.durationValue <= 0) {
