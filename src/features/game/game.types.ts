@@ -103,6 +103,7 @@ export interface GameStateSnapshot {
   skDefeated: boolean | null;
   pendingUpgradeCount: number | null;
   pendingUpgradeOptions: string[];
+  upgradesPerFloor: Record<string, string>;
   player: GamePlayerSnapshot | null;
   mapData: number[][] | null;
   tileData: number[][] | null;

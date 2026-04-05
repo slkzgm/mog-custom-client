@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent,
@@ -13,7 +14,7 @@ import { useMapBoardV2Model } from "./use-map-board-v2-model";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { getRunModeRewardValue } from "../game-modes";
 import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
-import { getUpgradeUiDescription, getUpgradeUiLabel } from "../upgrade-ui-catalog";
+import { getUpgradeUiDescription, getUpgradeUiDurationText, getUpgradeUiFloorsLeft, getUpgradeUiLabel } from "../upgrade-ui-catalog";
 import { clamp, parseCoordinateKey } from "./map-board-v2.utils";
 
 interface GameplayProductMapProps {
@@ -25,6 +26,25 @@ const PRODUCT_MAP_GRID_PADDING = 2;
 const PRODUCT_MAP_CELL_SIZE_FALLBACK = 56;
 const PRODUCT_MAP_CELL_SIZE_MIN = 16;
 const PRODUCT_MAP_CELL_SIZE_MAX = 96;
+const PRODUCT_MAP_MIN_INNER_WIDTH = 320;
+const PRODUCT_MAP_MIN_INNER_HEIGHT = 260;
+
+type ProductMapHudDensity = "comfortable" | "compact" | "minimal" | "stacked";
+
+interface ProductMapSafeInsets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+interface ProductMapLayoutBudget {
+  density: ProductMapHudDensity;
+  insets: ProductMapSafeInsets;
+  leftPanelWidth: number;
+  rightPanelWidth: number;
+  upgradeWidth: number;
+}
 
 function useElementSize<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -70,6 +90,91 @@ function getResponsiveCellSize(width: number, height: number, columnCount: numbe
     PRODUCT_MAP_CELL_SIZE_MIN,
     PRODUCT_MAP_CELL_SIZE_MAX,
   );
+}
+
+function resolveHudDensity(width: number, height: number): ProductMapHudDensity {
+  if (width <= 1024) return "stacked";
+  if (width <= 1200 || height <= 720) return "minimal";
+  if (width <= 1480 || height <= 860) return "compact";
+  return "comfortable";
+}
+
+function scaleInsetsToFit(width: number, height: number, insets: ProductMapSafeInsets): ProductMapSafeInsets {
+  const maxHorizontalBudget = Math.max(width - PRODUCT_MAP_MIN_INNER_WIDTH, 0);
+  const horizontalTotal = insets.left + insets.right;
+  const horizontalScale =
+    horizontalTotal > 0 && horizontalTotal > maxHorizontalBudget ? maxHorizontalBudget / horizontalTotal : 1;
+  const left = Math.round(insets.left * horizontalScale);
+  const right = Math.round(insets.right * horizontalScale);
+
+  const maxVerticalBudget = Math.max(height - PRODUCT_MAP_MIN_INNER_HEIGHT, 0);
+  const verticalTotal = insets.top + insets.bottom;
+  const verticalScale =
+    verticalTotal > 0 && verticalTotal > maxVerticalBudget ? maxVerticalBudget / verticalTotal : 1;
+
+  return {
+    top: Math.round(insets.top * verticalScale),
+    right,
+    bottom: Math.round(insets.bottom * verticalScale),
+    left,
+  };
+}
+
+function resolveMapLayoutBudget(
+  viewportWidth: number,
+  viewportHeight: number,
+  hasPendingUpgradeSelection: boolean,
+): ProductMapLayoutBudget {
+  const density = resolveHudDensity(viewportWidth, viewportHeight);
+
+  if (density === "stacked") {
+    return {
+      density,
+      insets: {
+        top: 92,
+        right: 12,
+        bottom: hasPendingUpgradeSelection ? 164 : 12,
+        left: 12,
+      },
+      leftPanelWidth: 0,
+      rightPanelWidth: 0,
+      upgradeWidth: Math.max(0, viewportWidth - 24),
+    };
+  }
+
+  const leftPanelWidth =
+    density === "comfortable"
+      ? clamp(Math.round(viewportWidth * 0.16), 188, 240)
+      : density === "compact"
+        ? clamp(Math.round(viewportWidth * 0.14), 164, 212)
+        : clamp(Math.round(viewportWidth * 0.12), 140, 188);
+  const rightPanelWidth =
+    density === "comfortable"
+      ? clamp(Math.round(viewportWidth * 0.2), 252, 316)
+      : density === "compact"
+        ? clamp(Math.round(viewportWidth * 0.18), 224, 280)
+        : clamp(Math.round(viewportWidth * 0.16), 196, 248);
+  const upgradeWidth =
+    density === "comfortable"
+      ? clamp(Math.round(viewportWidth * 0.36), 560, 760)
+      : density === "compact"
+        ? clamp(Math.round(viewportWidth * 0.4), 500, 680)
+        : clamp(Math.round(viewportWidth * 0.44), 420, 560);
+
+  const scaledInsets = scaleInsetsToFit(viewportWidth, viewportHeight, {
+    top: density === "comfortable" ? 88 : density === "compact" ? 78 : 70,
+    right: rightPanelWidth + 22,
+    bottom: hasPendingUpgradeSelection ? (density === "comfortable" ? 248 : density === "compact" ? 216 : 188) : density === "comfortable" ? 134 : density === "compact" ? 116 : 96,
+    left: leftPanelWidth + 22,
+  });
+
+  return {
+    density,
+    insets: scaledInsets,
+    leftPanelWidth,
+    rightPanelWidth,
+    upgradeWidth,
+  };
 }
 
 function ProductSelectedCellCard({
@@ -230,7 +335,7 @@ function ProductMapToolbar({
           </div>
 
           <div className="product-map-toolbar-group">
-            <span className="product-map-toolbar-meta">Drag to pan • Wheel to zoom</span>
+            <span className="product-map-toolbar-meta">Drag to pan • Wheel to zoom • Arrows move camera</span>
           </div>
         </>
       ) : null}
@@ -278,11 +383,19 @@ function ProductMapHud({ model }: GameplayProductMapProps) {
         <span className="product-card-label">Active Modifications</span>
         <ul className="product-upgrade-list">
           {upgrades.length > 0 ? (
-            upgrades.map((upgrade) => (
-              <li key={upgrade} title={getUpgradeUiDescription(upgrade, { runType: model.gameplay.runSession.runType }) ?? undefined}>
-                {getUpgradeUiLabel(upgrade)}
-              </li>
-            ))
+            upgrades.map((upgrade) => {
+              const floorsLeft = getUpgradeUiFloorsLeft(upgrade, {
+                gameState: model.gameplay.runState,
+                player,
+              });
+
+              return (
+                <li key={upgrade} title={getUpgradeUiDescription(upgrade, { runType: model.gameplay.runSession.runType }) ?? undefined}>
+                  <span>{getUpgradeUiLabel(upgrade)}</span>
+                  {floorsLeft !== null ? <strong className="product-upgrade-duration-pill">{floorsLeft}F</strong> : null}
+                </li>
+              );
+            })
           ) : (
             <li className="is-empty">No upgrades yet</li>
           )}
@@ -366,11 +479,56 @@ function ProductMobileControls({ model }: GameplayProductMapProps) {
 
 function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
   if (!model.gameplay.upgrades.hasPendingUpgradeSelection) return null;
+  const player = model.gameplay.runState?.player;
+  const rewardLabel = model.gameplay.runSession.mode.rewardLabel;
+  const rewardValue = getRunModeRewardValue(model.gameplay.runSession.runType, player);
+  const activeUpgrades = player?.upgrades ?? [];
 
   return (
     <section className="product-upgrade-sheet">
       <div className="product-upgrade-sheet-card">
         <span className="product-card-label">Select Modification</span>
+        <div className="product-upgrade-sheet-status">
+          <div className="product-upgrade-sheet-metrics">
+            <div className="product-upgrade-sheet-metric">
+              <span>Energy</span>
+              <strong>
+                {player?.energy ?? "-"}
+                {player?.maxEnergy !== null ? ` / ${player?.maxEnergy ?? "-"}` : ""}
+              </strong>
+            </div>
+            <div className="product-upgrade-sheet-metric">
+              <span>{rewardLabel}</span>
+              <strong>{rewardValue ?? "-"}</strong>
+            </div>
+            <div className="product-upgrade-sheet-metric">
+              <span>Marbles</span>
+              <strong>{player?.marbles ?? "-"}</strong>
+            </div>
+          </div>
+          <div className="product-upgrade-sheet-active">
+            <span className="product-card-label">Active Modifications</span>
+            <div className="product-upgrade-sheet-active-list">
+              {activeUpgrades.length > 0 ? (
+                activeUpgrades.map((upgrade) => {
+                  const floorsLeft = getUpgradeUiFloorsLeft(upgrade, {
+                    gameState: model.gameplay.runState,
+                    player,
+                  });
+
+                  return (
+                    <span key={upgrade} className="product-upgrade-sheet-active-pill" title={getUpgradeUiDescription(upgrade, { runType: model.gameplay.runSession.runType }) ?? undefined}>
+                      <span>{getUpgradeUiLabel(upgrade)}</span>
+                      {floorsLeft !== null ? <strong className="product-upgrade-duration-pill">{floorsLeft}F</strong> : null}
+                    </span>
+                  );
+                })
+              ) : (
+                <span className="product-upgrade-sheet-active-pill is-empty">No upgrades yet</span>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="product-upgrade-choice-grid">
           {model.gameplay.upgrades.pendingUpgradeOptions.map((upgradeId) => (
             <button
@@ -386,6 +544,9 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
                 <small className="product-upgrade-choice-copy">
                   {getUpgradeUiDescription(upgradeId, { runType: model.gameplay.runSession.runType })}
                 </small>
+              ) : null}
+              {getUpgradeUiDurationText(upgradeId) ? (
+                <small className="product-upgrade-choice-duration">{getUpgradeUiDurationText(upgradeId)}</small>
               ) : null}
             </button>
           ))}
@@ -407,12 +568,14 @@ function ProductMapViewport({
   model,
   mapModel,
   viewportRef,
-  viewportSize,
+  layoutBudget,
+  effectiveViewportSize,
 }: {
   model: GameplayProductScreenModel;
   mapModel: ReturnType<typeof useMapBoardV2Model>;
   viewportRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
-  viewportSize: ReturnType<typeof useElementSize<HTMLDivElement>>[1];
+  layoutBudget: ProductMapLayoutBudget;
+  effectiveViewportSize: { width: number; height: number };
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{
@@ -424,8 +587,27 @@ function ProductMapViewport({
   } | null>(null);
   const suppressClickRef = useRef(false);
   const cellSize = useMemo(
-    () => getResponsiveCellSize(viewportSize.width, viewportSize.height, mapModel.columnCount, mapModel.rowCount),
-    [mapModel.columnCount, mapModel.rowCount, viewportSize.height, viewportSize.width],
+    () =>
+      getResponsiveCellSize(
+        effectiveViewportSize.width,
+        effectiveViewportSize.height,
+        mapModel.columnCount,
+        mapModel.rowCount,
+      ),
+    [effectiveViewportSize.height, effectiveViewportSize.width, mapModel.columnCount, mapModel.rowCount],
+  );
+  const layoutStyle = useMemo(
+    () =>
+      ({
+        "--product-map-safe-top": `${layoutBudget.insets.top}px`,
+        "--product-map-safe-right": `${layoutBudget.insets.right}px`,
+        "--product-map-safe-bottom": `${layoutBudget.insets.bottom}px`,
+        "--product-map-safe-left": `${layoutBudget.insets.left}px`,
+        "--product-map-panel-left-width": `${layoutBudget.leftPanelWidth}px`,
+        "--product-map-panel-right-width": `${layoutBudget.rightPanelWidth}px`,
+        "--product-map-upgrade-width": `${layoutBudget.upgradeWidth}px`,
+      }) as CSSProperties,
+    [layoutBudget.insets.bottom, layoutBudget.insets.left, layoutBudget.insets.right, layoutBudget.insets.top, layoutBudget.leftPanelWidth, layoutBudget.rightPanelWidth, layoutBudget.upgradeWidth],
   );
 
   function stopDragging() {
@@ -502,7 +684,8 @@ function ProductMapViewport({
 
   return (
     <div
-      className={`product-map-grid-wrap ${mapModel.viewMode === "focus" ? "is-focus" : "is-full"} ${isDragging ? "is-dragging" : ""}`}
+      className={`product-map-grid-wrap ${mapModel.viewMode === "focus" ? "is-focus" : "is-full"} is-${layoutBudget.density} ${model.gameplay.upgrades.hasPendingUpgradeSelection ? "has-upgrade-sheet" : ""} ${isDragging ? "is-dragging" : ""}`}
+      style={layoutStyle}
     >
       <ProductMapToolbar model={model} mapModel={mapModel} />
       <div
@@ -515,13 +698,15 @@ function ProductMapViewport({
         onClickCapture={handleClickCapture}
         onWheel={handleWheel}
       >
-        <MapBoardV2Grid
-          cells={mapModel.cells}
-          columnCount={mapModel.columnCount}
-          onActivateCell={mapModel.handleActivateCell}
-          onSelectCell={mapModel.handleSelectCell}
-          cellSize={cellSize}
-        />
+        <div className="product-map-board-canvas">
+          <MapBoardV2Grid
+            cells={mapModel.cells}
+            columnCount={mapModel.columnCount}
+            onActivateCell={mapModel.handleActivateCell}
+            onSelectCell={mapModel.handleSelectCell}
+            cellSize={cellSize}
+          />
+        </div>
       </div>
       <ProductMapHud model={model} />
       <ProductSelectedCellCard mapModel={mapModel} />
@@ -533,11 +718,23 @@ function ProductMapViewport({
 export function GameplayProductMap({ model }: GameplayProductMapProps) {
   const runState = model.gameplay.runState!;
   const [viewportRef, viewportSize] = useElementSize<HTMLDivElement>();
+  const hasPendingUpgradeSelection = model.gameplay.upgrades.hasPendingUpgradeSelection;
+  const layoutBudget = useMemo(
+    () => resolveMapLayoutBudget(viewportSize.width, viewportSize.height, hasPendingUpgradeSelection),
+    [hasPendingUpgradeSelection, viewportSize.height, viewportSize.width],
+  );
+  const effectiveViewportSize = useMemo(
+    () => ({
+      width: Math.max(0, viewportSize.width - layoutBudget.insets.left - layoutBudget.insets.right),
+      height: Math.max(0, viewportSize.height - layoutBudget.insets.top - layoutBudget.insets.bottom),
+    }),
+    [layoutBudget.insets.bottom, layoutBudget.insets.left, layoutBudget.insets.right, layoutBudget.insets.top, viewportSize.height, viewportSize.width],
+  );
 
   const mapModel = useMapBoardV2Model({
     gameState: runState,
     optimisticPlayerPosition: model.gameplay.optimisticPlayerPosition,
-    focusViewportSize: viewportSize,
+    focusViewportSize: effectiveViewportSize,
     moveEvents: model.gameplay.lastMoveEvents,
     portalPrompt: model.gameplay.portalPrompt,
     onDirectionalAction: model.gameplay.controls.handleMove,
@@ -578,8 +775,14 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
   return (
     <section className="product-map-shell">
       <div className="product-map-stage">
-        <ProductMapViewport model={model} mapModel={mapModel} viewportRef={viewportRef} viewportSize={viewportSize} />
-        <ProductMobileControls model={model} />
+        <ProductMapViewport
+          model={model}
+          mapModel={mapModel}
+          viewportRef={viewportRef}
+          layoutBudget={layoutBudget}
+          effectiveViewportSize={effectiveViewportSize}
+        />
+        {!model.gameplay.upgrades.hasPendingUpgradeSelection ? <ProductMobileControls model={model} /> : null}
       </div>
     </section>
   );

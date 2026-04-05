@@ -282,6 +282,14 @@ function toGameState(payload: unknown): GameStateSnapshot | null {
   const source = asRecord(payload);
   if (!source) return null;
   const pendingUpgradeOptions = toStringArray(source.pendingUpgradeOptions);
+  const upgradesPerFloorSource = asRecord(source.upgradesPerFloor);
+  const upgradesPerFloor = upgradesPerFloorSource
+    ? Object.fromEntries(
+        Object.entries(upgradesPerFloorSource)
+          .map(([floor, upgradeId]) => [floor, typeof upgradeId === "string" ? upgradeId : null] as const)
+          .filter((entry): entry is [string, string] => Boolean(entry[1])),
+      )
+    : {};
 
   return {
     runId: pickFirstString(source, ["runId", "id"]),
@@ -302,6 +310,7 @@ function toGameState(payload: unknown): GameStateSnapshot | null {
       pickArrayLength(source.pendingUpgradeOptions) ??
       (pendingUpgradeOptions.length > 0 ? pendingUpgradeOptions.length : 0),
     pendingUpgradeOptions,
+    upgradesPerFloor,
     player: toGamePlayer(source.player),
     mapData: toNumberMatrix(source.mapData),
     tileData: toNumberMatrix(source.tileData),

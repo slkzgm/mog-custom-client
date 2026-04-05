@@ -242,7 +242,7 @@ summary {
 
 .gameplay-map-page {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   background:
     radial-gradient(circle at top, rgba(109, 211, 255, 0.06), transparent 28%),
@@ -285,10 +285,14 @@ summary {
 }
 
 .product-shell-lobby {
+  min-height: 100dvh;
   padding-top: 88px;
+  overflow-y: auto;
 }
 
 .product-shell-map {
+  height: 100dvh;
+  min-height: 100dvh;
   padding-top: 72px;
   overflow: hidden;
 }
@@ -301,7 +305,8 @@ summary {
 .product-shell-map .product-shell-body {
   width: calc(100vw - 24px);
   max-width: none;
-  min-height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
+  min-height: calc(100dvh - 72px);
 }
 
 .product-topbar {
@@ -714,7 +719,8 @@ summary {
 }
 
 .product-map-shell {
-  min-height: calc(100vh - 72px);
+  min-height: 100%;
+  height: 100%;
   display: grid;
   width: 100%;
 }
@@ -777,9 +783,16 @@ summary {
 }
 
 .product-map-grid-wrap {
+  --product-map-safe-top: 88px;
+  --product-map-safe-right: 300px;
+  --product-map-safe-bottom: 140px;
+  --product-map-safe-left: 220px;
+  --product-map-panel-left-width: 220px;
+  --product-map-panel-right-width: 280px;
+  --product-map-upgrade-width: 680px;
   position: relative;
   width: 100%;
-  min-height: 0;
+  min-height: 100%;
   display: grid;
   overflow: hidden;
   background:
@@ -793,13 +806,22 @@ summary {
 
 .product-map-board-viewport {
   width: 100%;
-  min-height: calc(100vh - 112px);
+  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+.product-map-board-canvas {
+  width: 100%;
   height: 100%;
   display: grid;
   place-items: center;
-  padding: 16px;
-  overflow: hidden;
-  user-select: none;
+  padding:
+    var(--product-map-safe-top)
+    var(--product-map-safe-right)
+    var(--product-map-safe-bottom)
+    var(--product-map-safe-left);
 }
 
 .product-map-grid-wrap.is-focus .product-map-board-viewport {
@@ -871,6 +893,7 @@ summary {
 .product-map-overlay-upgrades {
   left: 16px;
   bottom: 16px;
+  width: min(var(--product-map-panel-left-width), calc(100% - 32px));
   padding: 16px;
 }
 
@@ -886,6 +909,7 @@ summary {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: space-between;
   font-size: 0.84rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -906,9 +930,25 @@ summary {
   background: rgba(143, 144, 148, 0.38);
 }
 
+.product-upgrade-duration-pill {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid rgba(251, 188, 0, 0.22);
+  background: rgba(251, 188, 0, 0.08);
+  color: var(--product-gold);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+
 .product-map-overlay-stats {
   right: 16px;
   bottom: 16px;
+  width: min(var(--product-map-panel-right-width), calc(100% - 32px));
   display: grid;
   grid-template-columns: repeat(2, minmax(92px, 1fr));
 }
@@ -916,8 +956,9 @@ summary {
 .product-map-overlay-details {
   top: 72px;
   right: 16px;
-  min-width: 260px;
-  max-width: 300px;
+  width: min(var(--product-map-panel-right-width), calc(100% - 32px));
+  min-width: 0;
+  max-width: 320px;
   padding: 16px;
   display: grid;
   gap: 12px;
@@ -1034,7 +1075,7 @@ summary {
   left: 50%;
   bottom: 20px;
   z-index: 5;
-  width: min(680px, calc(100% - 320px));
+  width: min(var(--product-map-upgrade-width), calc(100% - 32px));
   transform: translateX(-50%);
   display: grid;
   place-items: center;
@@ -1050,6 +1091,109 @@ summary {
   background: rgba(12, 14, 17, 0.96);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
+}
+
+.product-upgrade-sheet-status {
+  display: grid;
+  gap: 12px;
+}
+
+.product-upgrade-sheet-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.product-upgrade-sheet-metric {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(143, 144, 148, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.product-upgrade-sheet-metric span {
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--product-dim);
+}
+
+.product-upgrade-sheet-metric strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.product-upgrade-sheet-active {
+  display: grid;
+  gap: 8px;
+}
+
+.product-upgrade-sheet-active-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-upgrade-sheet-active-pill {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(143, 144, 148, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.product-upgrade-sheet-active-pill.is-empty {
+  color: var(--product-dim);
+}
+
+.product-map-grid-wrap.is-compact .product-map-overlay,
+.product-map-grid-wrap.is-minimal .product-map-overlay,
+.product-map-grid-wrap.is-compact .product-upgrade-sheet-card,
+.product-map-grid-wrap.is-minimal .product-upgrade-sheet-card,
+.product-map-grid-wrap.is-compact .product-map-toolbar,
+.product-map-grid-wrap.is-minimal .product-map-toolbar {
+  backdrop-filter: blur(8px);
+}
+
+.product-map-grid-wrap.is-compact .product-map-overlay,
+.product-map-grid-wrap.is-compact .product-upgrade-sheet-card {
+  padding: 14px;
+}
+
+.product-map-grid-wrap.is-minimal .product-map-overlay,
+.product-map-grid-wrap.is-minimal .product-upgrade-sheet-card {
+  padding: 12px;
+}
+
+.product-map-grid-wrap.is-minimal .product-map-toolbar {
+  left: 12px;
+  right: 12px;
+  top: 12px;
+}
+
+.product-map-grid-wrap.is-minimal .product-map-overlay-upgrades,
+.product-map-grid-wrap.is-minimal .product-map-overlay-stats {
+  bottom: 12px;
+}
+
+.product-map-grid-wrap.is-minimal .product-map-overlay-upgrades {
+  left: 12px;
+}
+
+.product-map-grid-wrap.is-minimal .product-map-overlay-stats,
+.product-map-grid-wrap.is-minimal .product-map-overlay-details {
+  right: 12px;
+}
+
+.product-map-grid-wrap.is-minimal .product-map-overlay-details {
+  top: 64px;
 }
 
 .product-upgrade-choice-grid {
@@ -1094,6 +1238,7 @@ summary {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .product-upgrade-choice-copy {
@@ -1102,6 +1247,14 @@ summary {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--product-muted);
+}
+
+.product-upgrade-choice-duration {
+  font-size: 0.62rem;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--product-gold);
 }
 
 @media (max-width: 1024px) {
@@ -1221,69 +1374,258 @@ summary {
   }
 
   .product-map-stage {
-    padding-top: 12px;
-    padding-bottom: 24px;
+    height: 100%;
+    padding-top: 8px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 10px;
   }
 
   .product-map-toolbar {
-    position: static;
-    gap: 8px;
+    display: none;
   }
 
   .product-map-grid-wrap {
     width: 100%;
     min-height: 0;
+    height: 100%;
     background: transparent;
   }
 
   .product-map-board-viewport {
-    min-height: min(62vh, 420px);
-    padding: 10px;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .product-map-board-canvas {
+    padding:
+      var(--product-map-safe-top)
+      10px
+      var(--product-map-safe-bottom)
+      10px;
   }
 
   .product-map-overlay {
-    position: static;
     min-width: 0;
-    width: 100%;
+    width: auto;
   }
 
   .product-map-grid-wrap {
-    display: grid;
-    gap: 16px;
+    display: block;
   }
 
   .product-map-overlay-upgrades,
-  .product-map-overlay-stats,
   .product-map-overlay-details {
-    left: auto;
-    right: auto;
-    bottom: auto;
-    top: auto;
+    display: none;
   }
 
   .product-map-overlay-stats {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: auto;
+    z-index: 3;
+    width: auto;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .product-map-overlay-details {
-    max-width: none;
+  .product-map-overlay-upgrades {
+    position: absolute;
+    top: 52px;
+    left: 8px;
+    right: 8px;
+    bottom: auto;
+    z-index: 3;
+    display: grid;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .product-map-overlay-upgrades .product-card-label {
+    display: none;
+  }
+
+  .product-upgrade-list {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .product-upgrade-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .product-upgrade-list li {
+    flex: 0 0 auto;
+    min-height: 24px;
+    gap: 6px;
+    padding: 0 8px;
+    border: 1px solid rgba(143, 144, 148, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .product-upgrade-list li::before {
+    width: 6px;
+    height: 6px;
+  }
+
+  .product-map-stat {
+    min-width: 0;
+    padding: 9px 7px;
   }
 
   .product-upgrade-sheet {
-    position: static;
-    width: 100%;
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
     transform: none;
     padding: 0;
+    pointer-events: none;
+  }
+
+  .product-upgrade-sheet-card {
+    max-height: none;
+    padding: 14px;
     pointer-events: auto;
+  }
+
+  .product-upgrade-sheet-status {
+    gap: 10px;
+  }
+
+  .product-upgrade-sheet-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .product-upgrade-sheet-metric {
+    padding: 8px 8px;
+  }
+
+  .product-upgrade-sheet-metric span {
+    font-size: 0.5rem;
+    letter-spacing: 0.12em;
+  }
+
+  .product-upgrade-sheet-metric strong {
+    font-size: 0.76rem;
+  }
+
+  .product-upgrade-sheet-active-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .product-upgrade-sheet-active-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .product-upgrade-sheet-active-pill {
+    flex: 0 0 auto;
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 0.56rem;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet {
+    --product-map-safe-top: 8px;
+    --product-map-safe-right: 8px;
+    --product-map-safe-bottom: 8px;
+    --product-map-safe-left: 8px;
+    background:
+      radial-gradient(circle at top, rgba(251, 188, 0, 0.06), transparent 28%),
+      linear-gradient(180deg, rgba(12, 14, 17, 0.98), rgba(12, 14, 17, 0.98));
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-map-board-viewport,
+  .product-map-grid-wrap.has-upgrade-sheet .product-map-overlay-upgrades,
+  .product-map-grid-wrap.has-upgrade-sheet .product-map-overlay-stats,
+  .product-map-grid-wrap.has-upgrade-sheet .product-map-overlay-details {
+    display: none;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-sheet {
+    top: 8px;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-sheet-card {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-sheet-status {
+    gap: 8px;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-sheet-active {
+    gap: 6px;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-choice-grid {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-auto-rows: minmax(0, 1fr);
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-choice {
+    min-height: 0;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-choice-title {
+    font-size: 0.8rem;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-choice-copy {
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    line-height: 1.3;
+  }
+
+  .product-map-grid-wrap.has-upgrade-sheet .product-upgrade-choice-duration {
+    font-size: 0.54rem;
+    letter-spacing: 0.1em;
   }
 
   .product-mobile-controls {
     display: grid;
-    justify-items: center;
-    gap: 12px;
+    width: min(100%, 420px);
+    margin: 0 auto;
+    min-height: clamp(94px, 17dvh, 132px);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas:
+      "topbar topbar topbar"
+      ". up ."
+      "row row row"
+      ". down .";
+    gap: 6px 8px;
+    align-items: center;
+    padding: 6px 10px max(8px, env(safe-area-inset-bottom));
+    border: 1px solid rgba(143, 144, 148, 0.18);
+    background: rgba(12, 14, 17, 0.92);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+      0 16px 28px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(10px);
   }
 
   .product-mobile-controls-topbar {
+    grid-area: topbar;
     width: 100%;
     display: flex;
     justify-content: flex-end;
@@ -1302,8 +1644,44 @@ summary {
   }
 
   .product-mobile-controls button {
-    min-width: 84px;
-    min-height: 72px;
+    min-width: 0;
+    min-height: 42px;
+    border: 1px solid rgba(143, 144, 148, 0.18);
+    background: rgba(51, 53, 56, 0.88);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .product-mobile-controls > button:first-of-type {
+    grid-area: up;
+    width: 64px;
+    min-width: 64px;
+    justify-self: center;
+  }
+
+  .product-mobile-controls > button:last-of-type {
+    grid-area: down;
+    width: 64px;
+    min-width: 64px;
+    justify-self: center;
+  }
+
+  .product-mobile-controls-row {
+    grid-area: row;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .product-mobile-controls-row button {
+    width: 100%;
+  }
+
+  .product-mobile-controls-row button.is-primary {
+    min-height: 48px;
   }
 
   .product-upgrade-choice-grid {

@@ -1,3 +1,6 @@
+import type { GamePlayerSnapshot, GameStateSnapshot } from "./game.types";
+import { getUpgradeCatalogEntry } from "./upgrade-catalog";
+
 export type UpgradeRarity = "common" | "rare" | "epic";
 
 export interface MogVerifiedUpgradeCatalogEntry {
@@ -688,6 +691,67 @@ export function getUpgradeUiTooltip(
 
   if (!template) return null;
   return formatUpgradeTemplate(template, entry.modalParams);
+}
+
+export function getUpgradeUiFloorsLeft(
+  upgradeId: string,
+  params: {
+    gameState?: Pick<GameStateSnapshot, "currentFloor" | "upgradesPerFloor"> | null | undefined;
+    player?: Pick<GamePlayerSnapshot, "buffsRaw"> | null | undefined;
+  },
+): number | null {
+  const passiveDurations = params.player?.buffsRaw?.passiveBuffDurations;
+  if (passiveDurations && typeof passiveDurations === "object") {
+    const passiveDurationValue = (passiveDurations as Record<string, unknown>)[upgradeId];
+    if (typeof passiveDurationValue === "number" && Number.isFinite(passiveDurationValue) && passiveDurationValue > 0) {
+      return Math.max(0, Math.round(passiveDurationValue));
+    }
+  }
+
+  const catalogEntry = getUpgradeCatalogEntry(upgradeId);
+  if (catalogEntry?.durationUnit !== "floors" || typeof catalogEntry.durationValue !== "number" || catalogEntry.durationValue <= 0) {
+    return null;
+  }
+  if (!params.gameState || typeof params.gameState.currentFloor !== "number") return null;
+
+  const matchingFloors = Object.entries(params.gameState.upgradesPerFloor ?? {})
+    .filter(([, appliedUpgradeId]) => appliedUpgradeId === upgradeId)
+    .map(([floor]) => Number(floor))
+    .filter((floor): floor is number => Number.isFinite(floor))
+    .sort((left, right) => right - left);
+  const appliedFloor = matchingFloors[0];
+  if (typeof appliedFloor !== "number") return null;
+
+  const floorsLeft = catalogEntry.durationValue - (params.gameState.currentFloor - appliedFloor);
+  return floorsLeft > 0 ? floorsLeft : null;
+}
+
+export function getUpgradeUiDurationLabel(upgradeId: string): string | null {
+  const catalogEntry = getUpgradeCatalogEntry(upgradeId);
+  if (!catalogEntry?.durationUnit || typeof catalogEntry.durationValue !== "number" || catalogEntry.durationValue <= 0) {
+    return null;
+  }
+
+  const roundedDuration = Math.max(0, Math.round(catalogEntry.durationValue));
+  if (catalogEntry.durationUnit === "floors") return `${roundedDuration}F`;
+  if (catalogEntry.durationUnit === "turns") return `${roundedDuration}T`;
+  if (catalogEntry.durationUnit === "moves") return `${roundedDuration}M`;
+  if (catalogEntry.durationUnit === "charges") return `${roundedDuration}C`;
+  return null;
+}
+
+export function getUpgradeUiDurationText(upgradeId: string): string | null {
+  const catalogEntry = getUpgradeCatalogEntry(upgradeId);
+  if (!catalogEntry?.durationUnit || typeof catalogEntry.durationValue !== "number" || catalogEntry.durationValue <= 0) {
+    return null;
+  }
+
+  const roundedDuration = Math.max(0, Math.round(catalogEntry.durationValue));
+  if (catalogEntry.durationUnit === "floors") return `(${roundedDuration} floors)`;
+  if (catalogEntry.durationUnit === "turns") return `(${roundedDuration} turns)`;
+  if (catalogEntry.durationUnit === "moves") return `(${roundedDuration} moves)`;
+  if (catalogEntry.durationUnit === "charges") return `(${roundedDuration} charges)`;
+  return null;
 }
 
 function formatUpgradeTemplate(template: string, params: Record<string, number>) {
