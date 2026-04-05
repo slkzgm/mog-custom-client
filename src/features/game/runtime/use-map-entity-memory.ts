@@ -57,11 +57,17 @@ export function useMapEntityMemory(gameState: GameStateSnapshot | null, enabled:
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entityMemoryState));
-    } catch {
-      // Best-effort local persistence only.
-    }
+    const timeoutId = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entityMemoryState));
+      } catch {
+        // Best-effort local persistence only.
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [enabled, entityMemoryState]);
 
   const rememberedEntities = useMemo(

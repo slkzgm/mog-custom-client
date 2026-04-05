@@ -57,11 +57,17 @@ export function useMapFogMemory(gameState: GameStateSnapshot | null, enabled: bo
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fogMemoryState));
-    } catch {
-      // Best-effort local persistence only.
-    }
+    const timeoutId = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fogMemoryState));
+      } catch {
+        // Best-effort local persistence only.
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [enabled, fogMemoryState]);
 
   const rememberedCoordinates = useMemo(

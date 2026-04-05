@@ -16,10 +16,12 @@ export function useGameplayProductScreenModel() {
   const normalGameplay = useSharedGameplayModel({
     enabled: auth.isAuthenticated,
     runType: "NORMAL",
+    includeDerivedState: false,
   });
   const worldGameplay = useSharedGameplayModel({
     enabled: auth.isAuthenticated,
     runType: "WORLD",
+    includeDerivedState: false,
   });
   const amberBalanceQuery = useItemBalanceQuery("amber", auth.isAuthenticated);
   const claimsQuery = useClaimsQuery(auth.isAuthenticated);

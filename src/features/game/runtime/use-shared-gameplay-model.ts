@@ -5,12 +5,14 @@ import { useRunSessionController } from "./use-run-session-controller";
 interface UseSharedGameplayModelOptions {
   enabled?: boolean;
   runType?: RunType;
+  includeDerivedState?: boolean;
 }
 
 export function useSharedGameplayModel(options: UseSharedGameplayModelOptions = {}) {
   const runSession = useRunSessionController({
     enabled: options.enabled,
     runType: options.runType,
+    includeDerivedState: options.includeDerivedState,
   });
   const runActions = useRunActionsController({
     activeRunId: runSession.activeRunId,

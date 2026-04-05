@@ -2,7 +2,9 @@ import { useBuyKeysController } from "./use-buy-keys-controller";
 import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
 export function useGamePanelModel() {
-  const gameplay = useSharedGameplayModel();
+  const gameplay = useSharedGameplayModel({
+    includeDerivedState: true,
+  });
   const { runSession, controls, upgrades } = gameplay;
   const buyKeys = useBuyKeysController(runSession);
 

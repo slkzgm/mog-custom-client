@@ -1,7 +1,9 @@
 import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
 export function useGameplayScreenModel() {
-  const gameplay = useSharedGameplayModel();
+  const gameplay = useSharedGameplayModel({
+    includeDerivedState: false,
+  });
 
   return {
     runState: gameplay.runState,

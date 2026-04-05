@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { appConfig } from "../../../app/config";
 import { findPortalAtPosition } from "../game-map";
@@ -12,9 +12,10 @@ import { useMapEntityMemory } from "../runtime/use-map-entity-memory";
 import { useMapFogMemory } from "../runtime/use-map-fog-memory";
 import { useMapSnapshotProbe } from "../runtime/use-map-snapshot-probe";
 import { useMapVisitedCells } from "../runtime/use-map-visited-cells";
-import type { CellHint, MapBoardCellViewModel, MapBoardV2Props } from "./map-board-v2.types";
+import type { CellEntity, CellHint, MapBoardCellViewModel, MapBoardV2Props } from "./map-board-v2.types";
 import {
   buildHints,
+  buildEntityPositionLookups,
   buildViewport,
   clamp,
   fogStateAt,
@@ -22,10 +23,9 @@ import {
   parseCoordinateKey,
   predictEnemyNextMoveDirection,
   rememberedEntityToCellEntity,
-  resolveEntity,
+  resolveEntityWithLookups,
   selectedEnemyIntent,
-  tileKindAt,
-  toLookup,
+  tileKindAtWithLookups,
 } from "./map-board-v2.utils";
 
 function buildRange(min: number, max: number) {
@@ -46,7 +46,7 @@ function buildShroomDangerLookup(shroomChargingEvents: ReturnType<typeof parseSh
 }
 
 function withPortalPromptBadge(
-  entity: ReturnType<typeof resolveEntity>,
+  entity: CellEntity | null,
   portalCostText: string | null,
   isVisited: boolean,
 ) {
@@ -165,20 +165,20 @@ export function useMapBoardV2Model({
     () => buildViewport(gameState, viewMode, focusRadius, effectiveFocusOffset),
     [effectiveFocusOffset, focusRadius, gameState, viewMode],
   );
+  const entityLookups = useMemo(() => buildEntityPositionLookups(gameState), [gameState]);
   const hintsByKey = useMemo(() => buildHints(gameState), [gameState]);
-  const enemyLookup = useMemo(() => toLookup(gameState.enemies), [gameState.enemies]);
   const xValues = useMemo(() => buildRange(viewport.minX, viewport.maxX), [viewport.maxX, viewport.minX]);
   const yValues = useMemo(() => buildRange(viewport.minY, viewport.maxY), [viewport.maxY, viewport.minY]);
   const focusWindowSize = focusRadius * 2 + 1;
   const fallbackKey = gameState.player ? keyOf(gameState.player.x, gameState.player.y) : null;
   const activeSelectedKey = selectedKey ?? fallbackKey;
-  const selectedEnemy = activeSelectedKey ? enemyLookup.get(activeSelectedKey) ?? null : null;
+  const selectedEnemy = activeSelectedKey ? entityLookups.enemyByKey.get(activeSelectedKey) ?? null : null;
 
   const playerPortal = useMemo(() => {
     const player = gameState.player;
     if (!player) return null;
-    return findPortalAtPosition(gameState, player.x, player.y);
-  }, [gameState]);
+    return entityLookups.portalByKey.get(keyOf(player.x, player.y)) ?? null;
+  }, [entityLookups.portalByKey, gameState.player]);
   const latestPortalPrompt = useMemo(
     () => portalPrompt ?? parseLatestPortalPromptEvent(moveEvents),
     [moveEvents, portalPrompt],
@@ -191,8 +191,8 @@ export function useMapBoardV2Model({
     if (!activeSelectedKey) return null;
     const coordinates = parseCoordinateKey(activeSelectedKey);
     if (!coordinates) return null;
-    return findPortalAtPosition(gameState, coordinates.x, coordinates.y);
-  }, [activeSelectedKey, gameState]);
+    return entityLookups.portalByKey.get(keyOf(coordinates.x, coordinates.y)) ?? null;
+  }, [activeSelectedKey, entityLookups.portalByKey]);
   const isSelectedPortalInActivePrompt = useMemo(
     () =>
       Boolean(
@@ -231,8 +231,8 @@ export function useMapBoardV2Model({
         const currentFog = fogStateAt(gameState, x, y);
         const fog =
           currentFog !== "visible" && fogMemory.rememberedCoordinates.has(key) ? "remembered" : currentFog;
-        const tile = tileKindAt(gameState, x, y);
-        const currentEntity = resolveEntity(gameState, x, y);
+        const tile = tileKindAtWithLookups(gameState, x, y, entityLookups);
+        const currentEntity = resolveEntityWithLookups(gameState, x, y, entityLookups);
         const rememberedEntity = entityMemory.rememberedEntities.get(key);
         const isVisited = visitedCells.visitedCoordinates.has(key);
         const shroomDanger = shroomDangerTiles.get(key) ?? null;
@@ -246,7 +246,7 @@ export function useMapBoardV2Model({
         const hint = hintsByKey.get(key) ?? null;
         const isSelected = key === activeSelectedKey;
         const isPlayerTile = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
-        const portalAtCell = findPortalAtPosition(gameState, x, y);
+        const portalAtCell = entityLookups.portalByKey.get(key) ?? null;
         const action = resolveCellAction({
           hint,
           isPlayerTile,
@@ -291,6 +291,7 @@ export function useMapBoardV2Model({
   }, [
     activeSelectedKey,
     entityMemory.rememberedEntities,
+    entityLookups,
     fogMemory.rememberedCoordinates,
     gameState,
     hintsByKey,
@@ -308,19 +309,19 @@ export function useMapBoardV2Model({
     yValues,
   ]);
 
-  function setFocusMode(nextMode: "focus" | "full") {
+  const setFocusMode = useCallback((nextMode: "focus" | "full") => {
     setViewMode(nextMode);
-  }
+  }, []);
 
-  function zoomIn() {
+  const zoomIn = useCallback(() => {
     setFocusRadius((current) => clamp(current - 1, 3, 16));
-  }
+  }, []);
 
-  function zoomOut() {
+  const zoomOut = useCallback(() => {
     setFocusRadius((current) => clamp(current + 1, 3, 16));
-  }
+  }, []);
 
-  function panFocus(deltaX: number, deltaY: number) {
+  const panFocus = useCallback((deltaX: number, deltaY: number) => {
     setFocusOffsetState((current) => ({
       turnKey: currentTurnKey,
       offset: {
@@ -328,20 +329,20 @@ export function useMapBoardV2Model({
         y: (current.turnKey === currentTurnKey ? current.offset.y : 0) + deltaY,
       },
     }));
-  }
+  }, [currentTurnKey]);
 
-  function resetFocusOffset() {
+  const resetFocusOffset = useCallback(() => {
     setFocusOffsetState({
       offset: { x: 0, y: 0 },
       turnKey: currentTurnKey,
     });
-  }
+  }, [currentTurnKey]);
 
-  function handleSelectCell(key: string) {
+  const handleSelectCell = useCallback((key: string) => {
     setSelectedKey(key);
-  }
+  }, []);
 
-  function handleActivateCell(cell: MapBoardCellViewModel) {
+  const handleActivateCell = useCallback((cell: MapBoardCellViewModel) => {
     setSelectedKey(cell.key);
 
     if (cell.action?.kind === "portal") {
@@ -357,7 +358,7 @@ export function useMapBoardV2Model({
     if (cell.action?.kind === "direction" && cell.action.direction) {
       void onDirectionalAction?.(cell.action.direction);
     }
-  }
+  }, [onDirectionalAction, onPassAction, onPortalAction]);
 
   return {
     cells,

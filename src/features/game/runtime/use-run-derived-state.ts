@@ -9,15 +9,38 @@ import {
 } from "./game-runtime.utils";
 import type { GameStateSnapshot } from "../game.types";
 
-export function useRunDerivedState(gameState: GameStateSnapshot | null) {
+const emptyDerivedState = {
+  mapLines: [] as string[],
+  enemyLines: [] as string[],
+  interactiveLines: [] as string[],
+  torchLines: [] as string[],
+  portalLines: [] as string[],
+  pickupLines: [] as string[],
+  trapLines: [] as string[],
+  arrowTrapLines: [] as string[],
+  mapHeight: 0,
+  mapWidth: 0,
+  totalCells: 0,
+  tileCounts: { wall: 0, hardWall: 0, corridor: 0, unknown: 0, void: 0 },
+  fogCounts: { hidden: 0, explored: 0, visible: 0 },
+  player: null,
+  pendingUpgradeOptions: [] as string[],
+  hasPendingUpgradeSelection: false,
+  nextRerollCost: null as number | null,
+  canEstimateNextRerollCost: false,
+  hasEnoughTreasureForReroll: false,
+  skDefeatedText: "-",
+};
+
+export function useRunDerivedState(gameState: GameStateSnapshot | null, enabled = true) {
   const mapLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return buildAsciiMap(gameState);
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const enemyLines = useMemo(() => {
     const player = gameState?.player;
-    if (!gameState || !player) return [];
+    if (!enabled || !gameState || !player) return [];
 
     return gameState.enemies.map((enemy, index) => {
       const distance = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
@@ -36,65 +59,67 @@ export function useRunDerivedState(gameState: GameStateSnapshot | null) {
         enemy.hasHeavyHit ? "yes" : "no"
       } charging=${enemy.isChargingHeavy ? "yes" : "no"} attackable=${attackable} patternDir=${patternDirection} patternSign=${patternMovingPositive} passWalls=${passThroughWalls}`;
     });
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const interactiveLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return gameState.interactive.map(
       (entity, index) => `${index + 1}. ${entity.id ?? entity.type} [${entity.type}] @(${entity.x},${entity.y})`,
     );
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const torchLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return gameState.torches.map(
       (torch, index) =>
         `${index + 1}. ${torch.id ?? "torch"} @(${torch.x},${torch.y}) revealed=${torch.isRevealed ?? "-"}`,
     );
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const portalLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return gameState.portals.map(
       (portal, index) => `${index + 1}. ${portal.id ?? "portal"} @(${portal.x},${portal.y})`,
     );
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const pickupLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return gameState.pickups.map(
       (pickup, index) => `${index + 1}. ${pickup.id ?? pickup.type} [${pickup.type}] @(${pickup.x},${pickup.y})`,
     );
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const trapLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return gameState.traps.map(
       (trap, index) => `${index + 1}. ${trap.id ?? trap.type} [${trap.type}] @(${trap.x},${trap.y})`,
     );
-  }, [gameState]);
+  }, [enabled, gameState]);
 
   const arrowTrapLines = useMemo(() => {
-    if (!gameState) return [];
+    if (!enabled || !gameState) return [];
     return gameState.arrowTraps.map(
       (trap, index) => `${index + 1}. ${trap.id ?? trap.type} [${trap.type}] @(${trap.x},${trap.y})`,
     );
-  }, [gameState]);
+  }, [enabled, gameState]);
 
-  const mapHeight = gameState?.mapData?.length ?? 0;
-  const mapWidth = gameState?.mapData?.[0]?.length ?? 0;
+  const mapHeight = enabled ? gameState?.mapData?.length ?? 0 : 0;
+  const mapWidth = enabled ? gameState?.mapData?.[0]?.length ?? 0 : 0;
   const totalCells = mapWidth * mapHeight;
-  const tileCounts = countTileKinds(gameState?.mapData ?? null);
-  const fogCounts = countFogMask(gameState?.fogMask ?? null);
-  const player = gameState?.player ?? null;
-  const pendingUpgradeOptions = gameState?.pendingUpgradeOptions ?? [];
+  const tileCounts = enabled ? countTileKinds(gameState?.mapData ?? null) : emptyDerivedState.tileCounts;
+  const fogCounts = enabled ? countFogMask(gameState?.fogMask ?? null) : emptyDerivedState.fogCounts;
+  const player = enabled ? gameState?.player ?? null : null;
+  const pendingUpgradeOptions = enabled ? gameState?.pendingUpgradeOptions ?? [] : emptyDerivedState.pendingUpgradeOptions;
   const hasPendingUpgradeSelection = pendingUpgradeOptions.length > 0;
   const nextRerollCost =
-    typeof gameState?.nextRerollCost === "number" && gameState.nextRerollCost >= 0
+    enabled && typeof gameState?.nextRerollCost === "number" && gameState.nextRerollCost >= 0
       ? gameState.nextRerollCost
-      : estimateNextRerollCost(gameState?.currentRerollCount);
+      : enabled
+        ? estimateNextRerollCost(gameState?.currentRerollCount)
+        : null;
   const canEstimateNextRerollCost = typeof nextRerollCost === "number";
-  const playerTreasure = getRunModeRewardValue(gameState?.runType ?? "NORMAL", player);
+  const playerTreasure = enabled ? getRunModeRewardValue(gameState?.runType ?? "NORMAL", player) : null;
   const hasEnoughTreasureForReroll =
     canEstimateNextRerollCost && typeof playerTreasure === "number" && playerTreasure >= nextRerollCost;
   const skDefeatedText =

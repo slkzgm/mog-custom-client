@@ -14,11 +14,13 @@ import { useRunRuntimeState } from "./use-run-runtime-state";
 interface UseRunSessionControllerOptions {
   enabled?: boolean;
   runType?: RunType;
+  includeDerivedState?: boolean;
 }
 
 export function useRunSessionController(options: UseRunSessionControllerOptions = {}) {
   const enabled = options.enabled ?? true;
   const runType = options.runType ?? "NORMAL";
+  const includeDerivedState = options.includeDerivedState ?? true;
   const mode = getRunModeDefinition(runType);
   const statusQuery = useGameStatusQuery(enabled);
   const activeRunQuery = useActiveRunQuery(runType, enabled);
@@ -52,7 +54,7 @@ export function useRunSessionController(options: UseRunSessionControllerOptions 
       : "resume"
     : "-";
 
-  const derivedState = useRunDerivedState(effectiveGameState);
+  const derivedState = useRunDerivedState(effectiveGameState, includeDerivedState);
   const moveRunId = effectiveGameState?.runId ?? activeRunId;
 
   const refreshAll = useCallback(async () => {

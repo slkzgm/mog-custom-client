@@ -61,11 +61,17 @@ export function useMapVisitedCells(gameState: GameStateSnapshot | null, enabled:
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
 
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(visitedCellsState));
-    } catch {
-      // Best-effort local persistence only.
-    }
+    const timeoutId = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(visitedCellsState));
+      } catch {
+        // Best-effort local persistence only.
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [enabled, visitedCellsState]);
 
   const visitedCoordinates = useMemo(

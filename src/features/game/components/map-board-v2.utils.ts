@@ -1,4 +1,4 @@
-import type { EnemySnapshot, GameStateSnapshot, MoveDirection } from "../game.types";
+import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
 import type { RememberedEntity } from "../runtime/map-entity-memory";
 import {
   findBreakableInteractiveAtPosition,
@@ -52,6 +52,65 @@ export function tileKindAt(gameState: GameStateSnapshot, x: number, y: number): 
 
   const rock = gameState.interactive.find((item) => item.x === x && item.y === y && isRockInteractive(item));
   if (rock) return "wall";
+
+  const value = matrixAt(gameState.mapData, x, y);
+  if (value === null) return "void";
+  if (value === 2) return "hard-wall";
+  if (value === 1) return "wall";
+  if (value === 0) return "corridor";
+  return "unknown";
+}
+
+export interface EntityPositionLookups {
+  enemyByKey: Map<string, EnemySnapshot>;
+  interactiveByKey: Map<string, MapEntitySnapshot>;
+  pickupByKey: Map<string, MapEntitySnapshot>;
+  trapByKey: Map<string, MapEntitySnapshot>;
+  arrowTrapByKey: Map<string, MapEntitySnapshot>;
+  portalByKey: Map<string, MapEntitySnapshot>;
+  rockKeys: Set<string>;
+}
+
+export function buildEntityPositionLookups(gameState: GameStateSnapshot): EntityPositionLookups {
+  const enemyByKey = toLookup(gameState.enemies);
+  const interactiveByKey = toLookup(gameState.interactive);
+  const pickupByKey = toLookup(gameState.pickups);
+  const trapByKey = toLookup(gameState.traps);
+  const arrowTrapByKey = toLookup(gameState.arrowTraps);
+  const portalByKey = toLookup(gameState.portals);
+  const rockKeys = new Set<string>();
+
+  for (const interactive of gameState.interactive) {
+    const key = keyOf(interactive.x, interactive.y);
+
+    if (isRockInteractive(interactive)) {
+      rockKeys.add(key);
+    }
+
+    if (interactive.type.trim().toLowerCase() === "portal" && !portalByKey.has(key)) {
+      portalByKey.set(key, interactive);
+    }
+  }
+
+  return {
+    enemyByKey,
+    interactiveByKey,
+    pickupByKey,
+    trapByKey,
+    arrowTrapByKey,
+    portalByKey,
+    rockKeys,
+  };
+}
+
+export function tileKindAtWithLookups(
+  gameState: GameStateSnapshot,
+  x: number,
+  y: number,
+  lookups: Pick<EntityPositionLookups, "rockKeys">,
+): TileKind {
+  if (x < 0 || y < 0) return "void";
+  if (lookups.rockKeys.has(keyOf(x, y))) return "wall";
 
   const value = matrixAt(gameState.mapData, x, y);
   if (value === null) return "void";
@@ -321,6 +380,15 @@ export function rememberedEntityToCellEntity(entity: RememberedEntity): CellEnti
 }
 
 export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number): CellEntity | null {
+  return resolveEntityWithLookups(gameState, x, y, buildEntityPositionLookups(gameState));
+}
+
+export function resolveEntityWithLookups(
+  gameState: GameStateSnapshot,
+  x: number,
+  y: number,
+  lookups: EntityPositionLookups,
+): CellEntity | null {
   const isPlayer = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
   if (isPlayer) {
     const energyText =
@@ -341,7 +409,8 @@ export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number
     };
   }
 
-  const enemy = findEnemyAtPosition(gameState, x, y);
+  const key = keyOf(x, y);
+  const enemy = lookups.enemyByKey.get(key) ?? null;
   if (enemy) {
     const hpRatio =
       enemy.hp !== null && enemy.maxHp !== null && enemy.maxHp > 0 ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHp)) : null;
@@ -363,7 +432,7 @@ export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number
     };
   }
 
-  const interactive = gameState.interactive.find((item) => item.x === x && item.y === y);
+  const interactive = lookups.interactiveByKey.get(key) ?? null;
   if (interactive) {
     if (isRockInteractive(interactive)) {
       return null;
@@ -393,7 +462,7 @@ export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number
     };
   }
 
-  const pickup = gameState.pickups.find((item) => item.x === x && item.y === y);
+  const pickup = lookups.pickupByKey.get(key) ?? null;
   if (pickup) {
     const visual = resolvePickupVisual(pickup);
     const valueText = pickupValueText(pickup.value);
@@ -419,7 +488,7 @@ export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number
     };
   }
 
-  const trap = gameState.traps.find((item) => item.x === x && item.y === y);
+  const trap = lookups.trapByKey.get(key) ?? null;
   if (trap) {
     return {
       kind: "trap",
@@ -434,7 +503,7 @@ export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number
     };
   }
 
-  const arrowTrap = gameState.arrowTraps.find((item) => item.x === x && item.y === y);
+  const arrowTrap = lookups.arrowTrapByKey.get(key) ?? null;
   if (arrowTrap) {
     return {
       kind: "arrow-trap",
@@ -449,7 +518,7 @@ export function resolveEntity(gameState: GameStateSnapshot, x: number, y: number
     };
   }
 
-  const portal = gameState.portals.find((item) => item.x === x && item.y === y);
+  const portal = lookups.portalByKey.get(key) ?? null;
   if (portal) {
     return {
       kind: "portal",
