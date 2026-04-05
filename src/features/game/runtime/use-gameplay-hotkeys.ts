@@ -5,6 +5,7 @@ import { shouldIgnoreGameplayHotkey } from "./game-runtime.utils";
 
 interface UseGameplayHotkeysParams {
   disabled: boolean;
+  isActionPending?: boolean;
   onMove: (direction: MoveDirection) => void | Promise<void>;
   onPass: () => void | Promise<void>;
   pendingUpgradeOptions?: string[];
@@ -14,6 +15,7 @@ interface UseGameplayHotkeysParams {
 
 export function useGameplayHotkeys({
   disabled,
+  isActionPending = false,
   onMove,
   onPass,
   pendingUpgradeOptions = [],
@@ -21,12 +23,14 @@ export function useGameplayHotkeys({
   onSelectUpgrade,
 }: UseGameplayHotkeysParams) {
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
-    if (disabled || event.repeat || shouldIgnoreGameplayHotkey(event)) return;
+    if (event.repeat || shouldIgnoreGameplayHotkey(event)) return;
 
     const normalizedKey = event.key.toLowerCase();
     const hasPendingUpgradeSelection = pendingUpgradeOptions.length > 0;
 
     if (hasPendingUpgradeSelection) {
+      if (disabled || isActionPending) return;
+
       if (event.code === "Space" || normalizedKey === " ") {
         event.preventDefault();
         void onRerollUpgrades?.();
@@ -43,6 +47,8 @@ export function useGameplayHotkeys({
       void onSelectUpgrade?.(upgradeId);
       return;
     }
+
+    if (disabled) return;
 
     if (event.code === "Space" || normalizedKey === " ") {
       event.preventDefault();

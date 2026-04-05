@@ -7,6 +7,7 @@ export function GamePanel() {
 
   useGameplayHotkeys({
     disabled: model.controls.hotkeysDisabled,
+    isActionPending: model.controls.isAnyActionPending,
     onMove: model.controls.handleMove,
     onPass: model.controls.handlePass,
     pendingUpgradeOptions: model.upgrades.pendingUpgradeOptions,

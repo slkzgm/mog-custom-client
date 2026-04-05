@@ -81,7 +81,8 @@ export function GameplayProductScreen() {
   const model = useGameplayProductScreenModel();
 
   useGameplayHotkeys({
-    disabled: model.gameplay.hotkeysDisabled || !model.hasRunState,
+    disabled: model.gameplay.hotkeysDisabled || !model.shouldShowRun,
+    isActionPending: model.gameplay.controls.isAnyActionPending,
     onMove: model.gameplay.controls.handleMove,
     onPass: model.gameplay.controls.handlePass,
     pendingUpgradeOptions: model.gameplay.upgrades.pendingUpgradeOptions,

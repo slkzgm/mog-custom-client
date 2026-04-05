@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from "react";
 
 import { ApiError } from "../../../lib/http/api-error";
 import { gameActionQueue } from "../../realtime/game-action-queue";
@@ -23,6 +23,10 @@ interface RunQueuedActionParams {
   queuedRunId: string;
 }
 
+type BufferedGameplayInput =
+  | { kind: "move"; direction: MoveDirection }
+  | { kind: "pass" };
+
 export function useRunActionsController(
   runSession: Pick<
     RunSessionController,
@@ -45,6 +49,7 @@ export function useRunActionsController(
   const selectUpgradeMutation = useSelectUpgradeMutation();
   const runType = runSession.effectiveGameState?.runType ?? "NORMAL";
   const rewardLabel = getRunModeDefinition(runType).rewardLabel.toLowerCase();
+  const bufferedInputRef = useRef<BufferedGameplayInput | null>(null);
 
   const isAnyActionPending =
     runMoveMutation.isPending || runTeleportMutation.isPending || runRerollMutation.isPending || selectUpgradeMutation.isPending;
@@ -214,7 +219,7 @@ export function useRunActionsController(
     [findDirectionalPortalTarget, runSession],
   );
 
-  const handleMove = useCallback(
+  const executeMove = useCallback(
     async (direction: MoveDirection) => {
       await runQueuedRuntimeAction(`move:${direction}`, async ({ queuedState, queuedRunId }) => {
         const target = getMoveTarget(queuedState, direction);
@@ -267,7 +272,7 @@ export function useRunActionsController(
     [findDirectionalPortalTarget, runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState, runTeleportMutation],
   );
 
-  const handlePass = useCallback(async () => {
+  const executePass = useCallback(async () => {
     await runQueuedRuntimeAction("pass", async ({ queuedRunId }) => {
       const result = await runMoveMutation.mutateAsync({
         runId: queuedRunId,
@@ -280,6 +285,69 @@ export function useRunActionsController(
       runSession.runtimeState.replaceLastMoveEvents(result.events);
     });
   }, [runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState]);
+
+  const queueBufferedInput = useCallback((input: BufferedGameplayInput) => {
+    if (!runSession.moveRunId || !runSession.effectiveGameState || runSession.hasPendingUpgradeSelection) return;
+    bufferedInputRef.current = input;
+  }, [runSession.effectiveGameState, runSession.hasPendingUpgradeSelection, runSession.moveRunId]);
+
+  const flushBufferedInput = useEffectEvent(() => {
+    const bufferedInput = bufferedInputRef.current;
+    if (!bufferedInput) return;
+    if (isAnyActionPending) return;
+
+    if (!runSession.moveRunId || !runSession.effectiveGameState || runSession.hasPendingUpgradeSelection) {
+      bufferedInputRef.current = null;
+      return;
+    }
+
+    bufferedInputRef.current = null;
+
+    if (bufferedInput.kind === "move") {
+      if (validateMove(bufferedInput.direction)) return;
+      void executeMove(bufferedInput.direction);
+      return;
+    }
+
+    if (validatePass()) return;
+    void executePass();
+  });
+
+  useEffect(() => {
+    if (runSession.moveRunId && !runSession.hasPendingUpgradeSelection) return;
+    bufferedInputRef.current = null;
+  }, [runSession.hasPendingUpgradeSelection, runSession.moveRunId]);
+
+  useEffect(() => {
+    if (isAnyActionPending || !bufferedInputRef.current) return;
+    flushBufferedInput();
+  }, [
+    isAnyActionPending,
+    runSession.effectiveGameState,
+    runSession.hasPendingUpgradeSelection,
+    runSession.moveRunId,
+  ]);
+
+  const handleMove = useCallback(
+    async (direction: MoveDirection) => {
+      if (isAnyActionPending) {
+        queueBufferedInput({ kind: "move", direction });
+        return;
+      }
+
+      await executeMove(direction);
+    },
+    [executeMove, isAnyActionPending, queueBufferedInput],
+  );
+
+  const handlePass = useCallback(async () => {
+    if (isAnyActionPending) {
+      queueBufferedInput({ kind: "pass" });
+      return;
+    }
+
+    await executePass();
+  }, [executePass, isAnyActionPending, queueBufferedInput]);
 
   const handleUsePortal = useCallback(async () => {
     await runQueuedRuntimeAction("portal:use", async ({ queuedState, queuedRunId }) => {
@@ -349,7 +417,7 @@ export function useRunActionsController(
     [runSession, selectUpgradeMutation],
   );
 
-  const hotkeysDisabled = !runSession.moveRunId || !runSession.effectiveGameState || isAnyActionPending;
+  const hotkeysDisabled = !runSession.moveRunId || !runSession.effectiveGameState;
   const isRefreshDisabled = useMemo(
     () =>
       runSession.isRefreshDisabled ||

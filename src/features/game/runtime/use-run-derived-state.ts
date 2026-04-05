@@ -109,17 +109,15 @@ export function useRunDerivedState(gameState: GameStateSnapshot | null, enabled 
   const totalCells = mapWidth * mapHeight;
   const tileCounts = enabled ? countTileKinds(gameState?.mapData ?? null) : emptyDerivedState.tileCounts;
   const fogCounts = enabled ? countFogMask(gameState?.fogMask ?? null) : emptyDerivedState.fogCounts;
-  const player = enabled ? gameState?.player ?? null : null;
-  const pendingUpgradeOptions = enabled ? gameState?.pendingUpgradeOptions ?? [] : emptyDerivedState.pendingUpgradeOptions;
+  const player = gameState?.player ?? null;
+  const pendingUpgradeOptions = gameState?.pendingUpgradeOptions ?? [];
   const hasPendingUpgradeSelection = pendingUpgradeOptions.length > 0;
   const nextRerollCost =
-    enabled && typeof gameState?.nextRerollCost === "number" && gameState.nextRerollCost >= 0
+    typeof gameState?.nextRerollCost === "number" && gameState.nextRerollCost >= 0
       ? gameState.nextRerollCost
-      : enabled
-        ? estimateNextRerollCost(gameState?.currentRerollCount)
-        : null;
+      : estimateNextRerollCost(gameState?.currentRerollCount);
   const canEstimateNextRerollCost = typeof nextRerollCost === "number";
-  const playerTreasure = enabled ? getRunModeRewardValue(gameState?.runType ?? "NORMAL", player) : null;
+  const playerTreasure = getRunModeRewardValue(gameState?.runType ?? "NORMAL", player);
   const hasEnoughTreasureForReroll =
     canEstimateNextRerollCost && typeof playerTreasure === "number" && playerTreasure >= nextRerollCost;
   const skDefeatedText =
