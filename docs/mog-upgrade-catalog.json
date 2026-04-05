@@ -1,0 +1,642 @@
+{
+  "version": "2026-04-04",
+  "notes": [
+    "Built from live payload captures and local reverse-engineering notes.",
+    "confidence fields matter: some labels and descriptions are inferred rather than directly rendered by the official client."
+  ],
+  "entries": [
+    {
+      "id": "max_energy_small",
+      "label": "Vigor I",
+      "labelConfidence": "high",
+      "description": "+15 max energy.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "passive",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [],
+      "observedStatDeltas": {
+        "maxEnergy": 15
+      },
+      "notes": [
+        "Observed selection raised maxEnergy from 100 to 115."
+      ]
+    },
+    {
+      "id": "max_energy_large",
+      "label": "Vigor II",
+      "labelConfidence": "high",
+      "description": "+30 max energy.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "passive",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [],
+      "observedStatDeltas": {
+        "maxEnergy": 30
+      },
+      "notes": [
+        "Observed selection raised maxEnergy from 100 to 130.",
+        "Observed selection raised maxEnergy from 115 to 145 in a later run."
+      ]
+    },
+    {
+      "id": "attack_up",
+      "label": "Sharp Blade",
+      "labelConfidence": "high",
+      "description": "+1 attack bonus.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "attackBonus",
+        "passiveBuffDurations.attack_up"
+      ],
+      "observedStatDeltas": {
+        "attackBonus": 1
+      },
+      "notes": [
+        "Observed attackBonus: 1 after selection.",
+        "attackPower did not always mirror the bonus in payloads; use buffs.attackBonus as the source of truth."
+      ]
+    },
+    {
+      "id": "treasure_bonus",
+      "label": "Golden Touch",
+      "labelConfidence": "high",
+      "description": "+50% treasure.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "treasureBonus"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "bone_breaker",
+      "label": "Bone Breaker",
+      "labelConfidence": "high",
+      "description": "+1 damage versus skeletons.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "boneBreaker"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "lucky_find",
+      "label": "Lucky Find",
+      "labelConfidence": "high",
+      "description": "Improves loot drops.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "luckyFindBonus"
+      ],
+      "observedStatDeltas": {
+        "luckyFindBonus": 20
+      },
+      "notes": [
+        "Observed luckyFindBonus: 20 after selection."
+      ]
+    },
+    {
+      "id": "magnet",
+      "label": "Magnetic Pull",
+      "labelConfidence": "high",
+      "description": "Auto-pickup within 2 tiles.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "magnetRange",
+        "passiveBuffDurations.magnet"
+      ],
+      "observedStatDeltas": {
+        "magnetRange": 2
+      },
+      "notes": [
+        "Observed magnetRange: 2 in multiple run payloads."
+      ]
+    },
+    {
+      "id": "quick_step",
+      "label": "Quick Step",
+      "labelConfidence": "high",
+      "description": "5 free moves and a quick-step buff.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasQuickStep",
+        "sprintMoves",
+        "passiveBuffDurations.quick_step"
+      ],
+      "observedStatDeltas": {
+        "hasQuickStep": true,
+        "sprintMoves": 5
+      },
+      "notes": [
+        "Observed hasQuickStep: true and sprintMoves: 5 after selection."
+      ]
+    },
+    {
+      "id": "swift_steps",
+      "label": "Light Feet",
+      "labelConfidence": "high",
+      "description": "Free movement for 20 turns.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "turns",
+      "durationValue": 20,
+      "observedBuffKeys": [
+        "swiftStepsTurns"
+      ],
+      "observedStatDeltas": {
+        "swiftStepsTurns": 19
+      },
+      "notes": [
+        "Observed swiftStepsTurns: 19 immediately after selection, which is consistent with a 20-turn buff."
+      ]
+    },
+    {
+      "id": "sprint",
+      "label": "Sprint",
+      "labelConfidence": "high",
+      "description": "10 free moves.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "moves",
+      "durationValue": 10,
+      "observedBuffKeys": [
+        "sprintMoves"
+      ],
+      "observedStatDeltas": {
+        "sprintMoves": 10
+      },
+      "notes": [
+        "Observed sprintMoves: 10 after selection."
+      ]
+    },
+    {
+      "id": "scavenger",
+      "label": "Scavenger",
+      "labelConfidence": "high",
+      "description": "Pots and crates drop loot more reliably.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasScavenger"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Effect comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "soft_traps",
+      "label": "Soft Traps",
+      "labelConfidence": "high",
+      "description": "Reduces trap damage, likely by 50%.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "softTraps",
+        "hasTrapSight"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "mimic_sense",
+      "label": "Mimic Sense",
+      "labelConfidence": "high",
+      "description": "Reveals hidden mimics.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasMimicSense"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "poison_blade",
+      "label": "Poison Blade",
+      "labelConfidence": "high",
+      "description": "Poisons enemies. Older local notes describe 4 charges.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "charges",
+      "durationValue": 4,
+      "observedBuffKeys": [
+        "poisonBladeTurns"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "A buff field exists, but no direct post-selection payload was captured for the live effect value."
+      ]
+    },
+    {
+      "id": "treasure_hunter",
+      "label": "Treasure Hunter",
+      "labelConfidence": "high",
+      "description": "Chests drop 1 extra item.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "unknown",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [
+        "hasTreasureHunter"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "tough_hide",
+      "label": "Tough Hide",
+      "labelConfidence": "high",
+      "description": "Blocks 2 hits.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasToughHide",
+        "toughHideHits"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "trap_sight",
+      "label": "Trap Sight",
+      "labelConfidence": "high",
+      "description": "Reveals traps in explored areas.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasTrapSight"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "heal_small",
+      "label": "Energy Surge",
+      "labelConfidence": "high",
+      "description": "Instant energy restore. Older local notes describe +15 energy.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "instant",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [],
+      "observedStatDeltas": {},
+      "notes": [
+        "Instant-heal behavior is clear from local notes, but the exact delta was not isolated in the captured payloads."
+      ]
+    },
+    {
+      "id": "heal_large",
+      "label": "Energy Wave",
+      "labelConfidence": "high",
+      "description": "Instant energy restore. Older local notes describe +25 energy.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "instant",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [],
+      "observedStatDeltas": {},
+      "notes": [
+        "Instant-heal behavior is clear from local notes, but the exact delta was not isolated in the captured payloads."
+      ]
+    },
+    {
+      "id": "shield",
+      "label": "Barrier",
+      "labelConfidence": "high",
+      "description": "Grants shield charges. Observed current value: 3 hits.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "charges",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "shieldHits"
+      ],
+      "observedStatDeltas": {
+        "shieldHits": 3
+      },
+      "notes": [
+        "Observed shieldHits: 3 after selection.",
+        "Older local notes mention 5 hits, so the live value may have changed."
+      ]
+    },
+    {
+      "id": "critical_strike",
+      "label": "Crit Strike",
+      "labelConfidence": "high",
+      "description": "Critical-hit chance bonus. Older local notes describe +10% crit chance.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "unknown",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [
+        "critChance"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "The upgrade is confirmed in floor rewards, but no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "vision_boost",
+      "label": "Eagle Eye",
+      "labelConfidence": "high",
+      "description": "Vision bonus. Older local notes describe +2 vision.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "visionBoost"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "The upgrade label is well-supported locally, but the exact live value was not isolated from a selection payload."
+      ]
+    },
+    {
+      "id": "cleave",
+      "label": "Cleave",
+      "labelConfidence": "high",
+      "description": "Hits adjacent enemies for partial damage. Older local notes describe 25% splash damage.",
+      "descriptionConfidence": "high",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "cleaveTurns",
+        "passiveBuffDurations.cleave"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Description comes from local notes; no direct post-selection payload was captured."
+      ]
+    },
+    {
+      "id": "thorns",
+      "label": "Thorns",
+      "labelConfidence": "high",
+      "description": "Reflects damage. Older local notes describe 2 damage for 5 charges.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "charges",
+      "durationValue": 5,
+      "observedBuffKeys": [
+        "thornsTurns",
+        "passiveBuffDurations.thorns"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Effect exists in payloads, but a direct post-selection value was not captured."
+      ]
+    },
+    {
+      "id": "armor_plating",
+      "label": "Armor Plating",
+      "labelConfidence": "high",
+      "description": "Damage reduction buff. Older local notes describe a 50% chance to reduce damage by 25%.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "armorPlating",
+        "passiveBuffDurations.armor_plating"
+      ],
+      "observedStatDeltas": {
+        "armorPlating": 1
+      },
+      "notes": [
+        "Observed armorPlating: 1 after selection.",
+        "The exact combat rule comes from local notes rather than a directly isolated server payload."
+      ]
+    },
+    {
+      "id": "dodge_roll",
+      "label": "Dodge Roll",
+      "labelConfidence": "medium",
+      "description": "Dodge chance bonus.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "passive",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [
+        "dodgeChance"
+      ],
+      "observedStatDeltas": {
+        "dodgeChance": 20
+      },
+      "notes": [
+        "Observed dodgeChance: 20 after selection.",
+        "The player-facing label is inferred from the id."
+      ]
+    },
+    {
+      "id": "invisibility",
+      "label": "Invisibility",
+      "labelConfidence": "medium",
+      "description": "Become invisible for 20 turns.",
+      "descriptionConfidence": "confirmed",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "turns",
+      "durationValue": 20,
+      "observedBuffKeys": [
+        "invisibilityTurns"
+      ],
+      "observedStatDeltas": {
+        "invisibilityTurns": 19
+      },
+      "notes": [
+        "Observed invisibilityTurns: 19 immediately after selection.",
+        "The player-facing label is inferred from the id."
+      ]
+    },
+    {
+      "id": "patch_up",
+      "label": "Patch Up",
+      "labelConfidence": "medium",
+      "description": "Sustain or healing upgrade. Exact server effect not directly observed.",
+      "descriptionConfidence": "low",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "unknown",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [],
+      "observedStatDeltas": {},
+      "notes": [
+        "Seen in reroll results and pending upgrade lists, but never captured after a successful selection."
+      ]
+    },
+    {
+      "id": "portal_adept",
+      "label": "Portal Adept",
+      "labelConfidence": "medium",
+      "description": "Portal or teleport upgrade. Likely grants one free or discounted portal use.",
+      "descriptionConfidence": "low",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "unknown",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [
+        "hasPortalAdept",
+        "portalAdeptFreeUsed"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "The effect is inferred from payload fields, not from a direct post-selection capture."
+      ]
+    },
+    {
+      "id": "retaliation",
+      "label": "Retaliation",
+      "labelConfidence": "medium",
+      "description": "Retaliation buff. Exact combat rule not directly observed.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasRetaliation",
+        "passiveBuffDurations.retaliation"
+      ],
+      "observedStatDeltas": {
+        "hasRetaliation": true
+      },
+      "notes": [
+        "Observed hasRetaliation: true and passiveBuffDurations.retaliation: 3 after selection.",
+        "The player-facing label is inferred from the id."
+      ]
+    },
+    {
+      "id": "scout",
+      "label": "Scout",
+      "labelConfidence": "medium",
+      "description": "Scouting or reveal buff. Exact server effect not directly observed.",
+      "descriptionConfidence": "medium",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "temporary",
+      "durationUnit": "floors",
+      "durationValue": 3,
+      "observedBuffKeys": [
+        "hasScout",
+        "passiveBuffDurations.scout"
+      ],
+      "observedStatDeltas": {
+        "hasScout": true
+      },
+      "notes": [
+        "Observed hasScout: true and passiveBuffDurations.scout: 3 after selection.",
+        "The player-facing label is inferred from the id."
+      ]
+    },
+    {
+      "id": "vampiric",
+      "label": "Vampiric",
+      "labelConfidence": "medium",
+      "description": "Lifesteal-style upgrade tied to vampiricHeal.",
+      "descriptionConfidence": "low",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "unknown",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [
+        "vampiricHeal"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Seen in live upgrades lists, but never captured after a successful selection."
+      ]
+    },
+    {
+      "id": "berserker",
+      "label": "Berserker",
+      "labelConfidence": "medium",
+      "description": "Offensive bonus tied to berserkerBonus. Exact trigger not directly observed.",
+      "descriptionConfidence": "low",
+      "availabilityConfidence": "confirmed",
+      "effectKind": "unknown",
+      "durationUnit": null,
+      "durationValue": null,
+      "observedBuffKeys": [
+        "berserkerBonus"
+      ],
+      "observedStatDeltas": {},
+      "notes": [
+        "Seen in pending upgrade lists, but never captured after a successful selection."
+      ]
+    }
+  ]
+}

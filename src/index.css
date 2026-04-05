@@ -783,9 +783,14 @@ summary {
 }
 
 .product-map-grid-wrap .map2-grid {
-  gap: 0;
-  background: rgba(143, 144, 148, 0.18);
+  gap: 1px;
   padding: 1px;
+  background:
+    linear-gradient(180deg, rgba(143, 144, 148, 0.18), rgba(143, 144, 148, 0.12)),
+    rgba(8, 10, 13, 0.82);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.2);
 }
 
 .product-map-grid-wrap .map2-cell {
@@ -793,15 +798,27 @@ summary {
   height: var(--map2-cell-size);
   border: 0;
   border-radius: 0;
-  background: #111316;
-  box-shadow: inset 0 0 0 1px rgba(143, 144, 148, 0.22);
+  background:
+    linear-gradient(180deg, rgba(21, 24, 29, 0.98), rgba(14, 16, 20, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(143, 144, 148, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .product-map-grid-wrap .map2-cell:hover {
   transform: none;
   box-shadow:
     inset 0 0 0 1px rgba(251, 188, 0, 0.42),
+    inset 0 0 0 2px rgba(251, 188, 0, 0.14),
     0 0 0 1px rgba(251, 188, 0, 0.12);
+}
+
+.product-map-grid-wrap .map2-cell-base {
+  opacity: 0.96;
+}
+
+.product-map-grid-wrap .map2-cell-pattern {
+  opacity: 0.42;
 }
 
 .product-map-grid-wrap .map2-token-core,
@@ -865,6 +882,88 @@ summary {
   grid-template-columns: repeat(2, minmax(92px, 1fr));
 }
 
+.product-map-overlay-details {
+  top: 24px;
+  right: 24px;
+  min-width: 260px;
+  max-width: 300px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.product-map-details-section {
+  display: grid;
+  gap: 10px;
+}
+
+.product-map-details-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--product-muted);
+}
+
+.product-map-details-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-map-details-grid span {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--product-dim);
+}
+
+.product-map-details-grid strong {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.product-map-details-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-map-details-badge {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.product-map-details-badge.tone-danger {
+  color: #ffb4ab;
+}
+
+.product-map-details-badge.tone-warning {
+  color: #ffcf7e;
+}
+
+.product-map-details-badge.tone-value,
+.product-map-details-badge.tone-treasure,
+.product-map-details-badge.tone-jackpot {
+  color: var(--product-gold);
+}
+
+.product-map-details-badge.tone-energy {
+  color: #87dfff;
+}
+
+.product-map-details-badge.tone-marble {
+  color: #9ff0ad;
+}
+
 .product-map-stat {
   padding: 16px 18px;
   min-width: 92px;
@@ -925,12 +1024,48 @@ summary {
 
 .product-upgrade-choice {
   min-height: 112px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
   border: 0;
+  padding: 14px;
   border-radius: 0;
-  background: rgba(40, 42, 45, 0.94);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  background: linear-gradient(180deg, rgba(40, 42, 45, 0.96), rgba(26, 28, 31, 0.96));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  text-align: center;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.product-upgrade-choice:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(51, 53, 56, 0.98), rgba(31, 33, 36, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(251, 188, 0, 0.18),
+    inset 0 1px 0 rgba(255, 240, 194, 0.05);
+}
+
+.product-upgrade-choice:disabled {
+  opacity: 0.55;
+}
+
+.product-upgrade-choice-title {
+  font-size: 0.88rem;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.product-upgrade-choice-copy {
+  font-size: 0.64rem;
+  line-height: 1.45;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--product-muted);
 }
 
 @media (max-width: 1024px) {
@@ -1082,14 +1217,20 @@ summary {
   }
 
   .product-map-overlay-upgrades,
-  .product-map-overlay-stats {
+  .product-map-overlay-stats,
+  .product-map-overlay-details {
     left: auto;
     right: auto;
     bottom: auto;
+    top: auto;
   }
 
   .product-map-overlay-stats {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .product-map-overlay-details {
+    max-width: none;
   }
 
   .product-mobile-controls {

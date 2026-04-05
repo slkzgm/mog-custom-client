@@ -1,4 +1,5 @@
 import { moveControlOrder } from "../game-map";
+import { getUpgradeUiDescription, getUpgradeUiLabel } from "../upgrade-ui-catalog";
 import type { GamePanelModel } from "../runtime/use-game-panel-model";
 import { formatDurationMs, formatGameError } from "../runtime/game-runtime.utils";
 import { MapBoard } from "./map-board";
@@ -248,7 +249,9 @@ export function BoardSection({
           </p>
         </div>
       </div>
-      <p className="text-muted">upgrades: {board.player?.upgrades.length ? board.player.upgrades.join(", ") : "-"}</p>
+      <p className="text-muted">
+        upgrades: {board.player?.upgrades.length ? board.player.upgrades.map((upgradeId) => getUpgradeUiLabel(upgradeId)).join(", ") : "-"}
+      </p>
       <p className="text-muted">
         active buffs:{" "}
         {board.player?.activeBuffs.length ? board.player.activeBuffs.map((buff) => `${buff.key}=${String(buff.value)}`).join(", ") : "-"}
@@ -329,7 +332,7 @@ export function UpgradeSection({
     <section className="panel-card">
       <h3>Upgrade Selection</h3>
       <p>pending selection: {upgrades.hasPendingUpgradeSelection ? "true" : "false"}</p>
-      <p>options: {upgrades.pendingUpgradeOptions.length ? upgrades.pendingUpgradeOptions.join(", ") : "-"}</p>
+      <p>options: {upgrades.pendingUpgradeOptions.length ? upgrades.pendingUpgradeOptions.map((upgradeId) => getUpgradeUiLabel(upgradeId)).join(", ") : "-"}</p>
       <p>next reroll cost: {upgrades.nextRerollCost ?? "-"}</p>
       <p>
         reroll affordable: {upgrades.canEstimateNextRerollCost ? (upgrades.hasEnoughTreasureForReroll ? "yes" : "no") : "-"}
@@ -349,8 +352,9 @@ export function UpgradeSection({
             type="button"
             onClick={() => void upgrades.handleSelectUpgrade(upgradeId)}
             disabled={!controls.moveRunId || upgrades.runRerollMutation.isPending || upgrades.selectUpgradeMutation.isPending}
+            title={getUpgradeUiDescription(upgradeId) ?? undefined}
           >
-            Select {upgradeId}
+            Select {getUpgradeUiLabel(upgradeId)}
           </button>
         ))}
       </div>

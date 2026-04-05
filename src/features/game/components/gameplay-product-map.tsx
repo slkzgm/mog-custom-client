@@ -2,9 +2,110 @@ import { MapBoardV2Grid } from "./map-board-v2-grid";
 import { useMapBoardV2Model } from "./use-map-board-v2-model";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { getRunModeRewardValue } from "../game-modes";
+import { getUpgradeUiDescription, getUpgradeUiLabel } from "../upgrade-ui-catalog";
+import { parseCoordinateKey } from "./map-board-v2.utils";
 
 interface GameplayProductMapProps {
   model: GameplayProductScreenModel;
+}
+
+function ProductSelectedCellCard({
+  mapModel,
+}: {
+  mapModel: ReturnType<typeof useMapBoardV2Model>;
+}) {
+  const selectedCell = mapModel.cells.find((cell) => cell.key === mapModel.activeSelectedKey) ?? null;
+  const selectedCoords = mapModel.activeSelectedKey ? parseCoordinateKey(mapModel.activeSelectedKey) : null;
+
+  if (!selectedCell || !selectedCoords) return null;
+
+  return (
+    <aside className="product-map-overlay product-map-overlay-details">
+      <span className="product-card-label">Selected Cell</span>
+      <div className="product-map-details-grid">
+        <div>
+          <span>Coordinates</span>
+          <strong>
+            {selectedCoords.x}, {selectedCoords.y}
+          </strong>
+        </div>
+        <div>
+          <span>Tile</span>
+          <strong>{selectedCell.tile}</strong>
+        </div>
+        <div>
+          <span>Fog</span>
+          <strong>{selectedCell.fog}</strong>
+        </div>
+        <div>
+          <span>Entity</span>
+          <strong>{selectedCell.entity?.label ?? "-"}</strong>
+        </div>
+      </div>
+
+      {selectedCell.entity ? (
+        <div className="product-map-details-section">
+          <p className="product-map-details-title">{selectedCell.entity.kind}</p>
+          {selectedCell.entity.badges.length > 0 ? (
+            <div className="product-map-details-badges">
+              {selectedCell.entity.badges.map((badge) => (
+                <span key={`${badge.position}:${badge.text}`} className={`product-map-details-badge tone-${badge.tone}`}>
+                  {badge.text}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {mapModel.selectedEnemy ? (
+        <div className="product-map-details-section">
+          <p className="product-map-details-title">Enemy Intel</p>
+          <div className="product-map-details-grid">
+            <div>
+              <span>Type</span>
+              <strong>{mapModel.selectedEnemy.type}</strong>
+            </div>
+            <div>
+              <span>HP</span>
+              <strong>
+                {mapModel.selectedEnemy.hp ?? "-"}
+                {mapModel.selectedEnemy.maxHp !== null ? ` / ${mapModel.selectedEnemy.maxHp}` : ""}
+              </strong>
+            </div>
+            <div>
+              <span>Damage</span>
+              <strong>{mapModel.selectedEnemy.damage ?? "-"}</strong>
+            </div>
+            <div>
+              <span>Intent</span>
+              <strong>{mapModel.selectedEnemyIntentText ?? "-"}</strong>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {mapModel.selectedPortal ? (
+        <div className="product-map-details-section">
+          <p className="product-map-details-title">Portal Link</p>
+          <div className="product-map-details-grid">
+            <div>
+              <span>Portal</span>
+              <strong>{mapModel.selectedPortal.id ?? mapModel.selectedPortal.type}</strong>
+            </div>
+            <div>
+              <span>Linked</span>
+              <strong>{mapModel.selectedPortal.linkedPortalId ?? "-"}</strong>
+            </div>
+            <div>
+              <span>Cost</span>
+              <strong>{mapModel.isSelectedPortalInActivePrompt ? mapModel.latestPortalPrompt?.teleportCost ?? "-" : "-"}</strong>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </aside>
+  );
 }
 
 function ProductMapToolbar({
@@ -88,7 +189,11 @@ function ProductMapHud({ model }: GameplayProductMapProps) {
         <span className="product-card-label">Active Modifications</span>
         <ul className="product-upgrade-list">
           {upgrades.length > 0 ? (
-            upgrades.map((upgrade) => <li key={upgrade}>{upgrade}</li>)
+            upgrades.map((upgrade) => (
+              <li key={upgrade} title={getUpgradeUiDescription(upgrade, { runType: model.gameplay.runSession.runType }) ?? undefined}>
+                {getUpgradeUiLabel(upgrade)}
+              </li>
+            ))
           ) : (
             <li className="is-empty">No upgrades yet</li>
           )}
@@ -185,8 +290,14 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
               className="product-upgrade-choice"
               onClick={() => void model.gameplay.upgrades.handleSelectUpgrade(upgradeId)}
               disabled={model.gameplay.upgrades.runRerollMutation.isPending || model.gameplay.upgrades.selectUpgradeMutation.isPending}
+              title={getUpgradeUiDescription(upgradeId, { runType: model.gameplay.runSession.runType }) ?? undefined}
             >
-              {upgradeId}
+              <span className="product-upgrade-choice-title">{getUpgradeUiLabel(upgradeId)}</span>
+              {getUpgradeUiDescription(upgradeId, { runType: model.gameplay.runSession.runType }) ? (
+                <small className="product-upgrade-choice-copy">
+                  {getUpgradeUiDescription(upgradeId, { runType: model.gameplay.runSession.runType })}
+                </small>
+              ) : null}
             </button>
           ))}
         </div>
@@ -232,6 +343,7 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
             onSelectCell={mapModel.handleSelectCell}
           />
           <ProductMapHud model={model} />
+          <ProductSelectedCellCard mapModel={mapModel} />
         </div>
         <ProductMobileControls model={model} />
       </div>
