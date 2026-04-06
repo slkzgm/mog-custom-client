@@ -15,7 +15,7 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
   return (
     <header className="product-topbar">
       <div className="product-topbar-left">
-        <span className="product-topbar-brand-mark">OSS_TERMINAL</span>
+        <span className="product-topbar-brand-mark">MOG_PLAY</span>
         <div className="product-topbar-stats">
           <div className="product-topbar-stat product-topbar-stat-gold">
             <span>Arcade Keys</span>
