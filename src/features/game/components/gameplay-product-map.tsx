@@ -643,7 +643,9 @@ function ProductMapViewport({
     startOffsetX: number;
     startOffsetY: number;
   } | null>(null);
+  const pressedCellKeyRef = useRef<string | null>(null);
   const suppressClickRef = useRef(false);
+  const cellsByKey = useMemo(() => new Map(mapModel.cells.map((cell) => [cell.key, cell])), [mapModel.cells]);
   const cellSize = useMemo(
     () =>
       getResponsiveCellSize(
@@ -673,10 +675,16 @@ function ProductMapViewport({
     setIsDragging(false);
   }
 
+  function resolvePressedCellKey(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) return null;
+    return target.closest<HTMLElement>("[data-cell-key]")?.dataset.cellKey ?? null;
+  }
+
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (mapModel.viewMode !== "focus") return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
+    pressedCellKeyRef.current = resolvePressedCellKey(event.target);
     dragStateRef.current = {
       pointerId: event.pointerId,
       originX: event.clientX,
@@ -711,11 +719,21 @@ function ProductMapViewport({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    const shouldActivatePressedCell = !suppressClickRef.current ? pressedCellKeyRef.current : null;
     stopDragging();
+    pressedCellKeyRef.current = null;
+
+    if (!shouldActivatePressedCell) return;
+
+    const pressedCell = cellsByKey.get(shouldActivatePressedCell);
+    if (!pressedCell) return;
+
+    mapModel.handleActivateCell(pressedCell);
   }
 
   function handlePointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
     if (dragStateRef.current?.pointerId !== event.pointerId) return;
+    pressedCellKeyRef.current = null;
     stopDragging();
   }
 

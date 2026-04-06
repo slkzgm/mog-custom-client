@@ -41,6 +41,7 @@ export function MapBoardV2Grid({
           key={cell.key}
           type="button"
           className={cell.className}
+          data-cell-key={cell.key}
           onClick={() => onActivateCell(cell)}
           onContextMenu={(event) => handleContextMenu(event, cell.key)}
           title={cell.title}
