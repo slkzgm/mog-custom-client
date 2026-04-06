@@ -447,13 +447,13 @@ function ProductMapHud({
 function ProductMobileControls({ model }: GameplayProductMapProps) {
   const controls = model.gameplay.controls;
   const portalValidation = controls.validateUsePortal();
-  const centerLabel = !portalValidation ? "Portal" : "Pass";
-  const isCenterDisabled = !portalValidation
-    ? model.gameplay.isActionLocked || controls.runTeleportMutation.isPending
-    : Boolean(controls.validatePass()) || model.gameplay.isActionLocked;
+  const passValidation = controls.validatePass();
+  const canUsePortal = !portalValidation;
+  const isPortalDisabled = !canUsePortal || model.gameplay.isActionLocked || controls.runTeleportMutation.isPending;
+  const isPassDisabled = Boolean(passValidation) || model.gameplay.isActionLocked;
 
   return (
-    <div className="product-mobile-controls">
+    <div className="product-mobile-controls" aria-label="Run controls" role="group">
       <div className="product-mobile-controls-pad" aria-label="Movement controls" role="group">
         <button
           type="button"
@@ -498,14 +498,31 @@ function ProductMobileControls({ model }: GameplayProductMapProps) {
         </button>
       </div>
 
-      <button
-        type="button"
-        className="product-mobile-control product-mobile-control-primary is-primary"
-        onClick={() => void (!portalValidation ? controls.handleUsePortal() : controls.handlePass())}
-        disabled={isCenterDisabled}
-      >
-        <span className="product-mobile-control-label">{centerLabel}</span>
-      </button>
+      <div className={`product-mobile-controls-actions ${canUsePortal ? "has-secondary" : "is-single"}`}>
+        <button
+          type="button"
+          className="product-mobile-control product-mobile-control-primary is-primary"
+          onClick={() => void (canUsePortal ? controls.handleUsePortal() : controls.handlePass())}
+          disabled={canUsePortal ? isPortalDisabled : isPassDisabled}
+          title={canUsePortal ? "Use portal" : "Pass turn"}
+        >
+          <span className="product-mobile-control-label">{canUsePortal ? "Portal" : "Pass"}</span>
+          <span className="product-mobile-control-copy">{canUsePortal ? "Teleport" : "Skip turn"}</span>
+        </button>
+
+        {canUsePortal ? (
+          <button
+            type="button"
+            className="product-mobile-control product-mobile-control-secondary"
+            onClick={() => void controls.handlePass()}
+            disabled={isPassDisabled}
+            title={passValidation ?? "Pass turn"}
+          >
+            <span className="product-mobile-control-label">Pass</span>
+            <span className="product-mobile-control-copy">Skip turn</span>
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
