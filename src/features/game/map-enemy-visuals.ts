@@ -36,6 +36,38 @@ export function isSkullEnemySprite(spriteType: string | null) {
   return normalized.includes("skeleton") || normalized.includes("skull");
 }
 
+function normalizeEnemyValue(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function resolvePatternToken(patternDirection: string | null) {
+  const direction = normalizeEnemyValue(patternDirection);
+  if (direction === "horizontal") return "↔";
+  if (direction === "vertical") return "↕";
+  return "⇄";
+}
+
+function resolveEnemyToken(enemy: EnemySnapshot, isGhost: boolean, isJackpot: boolean) {
+  if (isJackpot) {
+    return normalizeEnemyValue(enemy.spriteType) === "skeletonking" ? "♔" : "♦";
+  }
+
+  switch (normalizeEnemyValue(enemy.type)) {
+    case "pattern":
+      return resolvePatternToken(enemy.patternDirection);
+    case "erratic":
+      return "✦";
+    case "chaser":
+      return "◎";
+    case "stationary":
+      return "✳";
+    case "wobble":
+      return "W";
+    default:
+      return isGhost ? "G" : "!";
+  }
+}
+
 export function resolveEnemyVisual(
   enemy: EnemySnapshot,
   options?: { intentArrow?: string | null },
@@ -94,7 +126,7 @@ export function resolveEnemyVisual(
           ? "enemy-skull"
           : "enemy",
     label: isJackpot ? "Jackpot" : isGhost ? "Ghost" : enemy.type,
-    token: isJackpot ? "♦" : isGhost ? "G" : "!",
+    token: resolveEnemyToken(enemy, isGhost, isJackpot),
     isGhost,
     isSkull,
     isJackpot,

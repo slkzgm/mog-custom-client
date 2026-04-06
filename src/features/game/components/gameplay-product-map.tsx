@@ -130,14 +130,17 @@ function resolveMapLayoutBudget(
   viewportWidth: number,
   viewportHeight: number,
   hasPendingUpgradeSelection: boolean,
+  overlayStackHeight: number,
 ): ProductMapLayoutBudget {
   const density = resolveHudDensity(viewportWidth, viewportHeight);
 
   if (density === "stacked") {
+    const topInset = Math.max(120, overlayStackHeight > 0 ? overlayStackHeight + 20 : 120);
+
     return {
       density,
       insets: {
-        top: 92,
+        top: topInset,
         right: 12,
         bottom: hasPendingUpgradeSelection ? 164 : 12,
         left: 12,
@@ -377,7 +380,12 @@ function ProductMapToolbar({
   );
 }
 
-function ProductMapHud({ model }: GameplayProductMapProps) {
+function ProductMapHud({
+  model,
+  overlayStackRef,
+}: GameplayProductMapProps & {
+  overlayStackRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
+}) {
   const player = model.gameplay.runState?.player;
   const upgrades =
     player?.upgrades.filter((upgrade) =>
@@ -390,7 +398,26 @@ function ProductMapHud({ model }: GameplayProductMapProps) {
   const rewardValue = getRunModeRewardValue(model.gameplay.runSession.runType, player);
 
   return (
-    <>
+    <div ref={overlayStackRef} className="product-map-overlay-stack">
+      <div className="product-map-overlay product-map-overlay-stats">
+        <div className="product-map-stat">
+          <span>Floor</span>
+          <strong>{model.gameplay.runState?.currentFloor ?? "-"}</strong>
+        </div>
+        <div className="product-map-stat">
+          <span>Turn</span>
+          <strong>{model.gameplay.runState?.turnNumber ?? "-"}</strong>
+        </div>
+        <div className="product-map-stat">
+          <span>Marbles</span>
+          <strong>{player?.marbles ?? "-"}</strong>
+        </div>
+        <div className="product-map-stat">
+          <span>{rewardLabel}</span>
+          <strong>{rewardValue ?? "-"}</strong>
+        </div>
+      </div>
+
       <div className="product-map-overlay product-map-overlay-upgrades">
         <span className="product-card-label">Active Modifications</span>
         <ul className="product-upgrade-list">
@@ -413,26 +440,7 @@ function ProductMapHud({ model }: GameplayProductMapProps) {
           )}
         </ul>
       </div>
-
-      <div className="product-map-overlay product-map-overlay-stats">
-        <div className="product-map-stat">
-          <span>Floor</span>
-          <strong>{model.gameplay.runState?.currentFloor ?? "-"}</strong>
-        </div>
-        <div className="product-map-stat">
-          <span>Turn</span>
-          <strong>{model.gameplay.runState?.turnNumber ?? "-"}</strong>
-        </div>
-        <div className="product-map-stat">
-          <span>Marbles</span>
-          <strong>{player?.marbles ?? "-"}</strong>
-        </div>
-        <div className="product-map-stat">
-          <span>{rewardLabel}</span>
-          <strong>{rewardValue ?? "-"}</strong>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -446,44 +454,57 @@ function ProductMobileControls({ model }: GameplayProductMapProps) {
 
   return (
     <div className="product-mobile-controls">
-      <div className="product-mobile-controls-topbar">
-        <button type="button" className="product-mobile-menu-button" onClick={model.openMenu}>
-          Menu
-        </button>
-      </div>
-      <button type="button" onClick={() => void controls.handleMove("up")} disabled={Boolean(controls.validateMove("up")) || model.gameplay.isActionLocked}>
-        Up
-      </button>
-      <div className="product-mobile-controls-row">
+      <div className="product-mobile-controls-pad" aria-label="Movement controls" role="group">
         <button
           type="button"
+          className="product-mobile-control product-mobile-control-direction product-mobile-control-up"
+          aria-label="Move up"
+          title="Move up"
+          onClick={() => void controls.handleMove("up")}
+          disabled={Boolean(controls.validateMove("up")) || model.gameplay.isActionLocked}
+        >
+          <span aria-hidden="true" className="product-mobile-control-icon">↑</span>
+        </button>
+        <button
+          type="button"
+          className="product-mobile-control product-mobile-control-direction product-mobile-control-left"
+          aria-label="Move left"
+          title="Move left"
           onClick={() => void controls.handleMove("left")}
           disabled={Boolean(controls.validateMove("left")) || model.gameplay.isActionLocked}
         >
-          Left
+          <span aria-hidden="true" className="product-mobile-control-icon">←</span>
         </button>
+        <span className="product-mobile-controls-pad-core" aria-hidden="true" />
         <button
           type="button"
-          className="is-primary"
-          onClick={() => void (!portalValidation ? controls.handleUsePortal() : controls.handlePass())}
-          disabled={isCenterDisabled}
-        >
-          {centerLabel}
-        </button>
-        <button
-          type="button"
+          className="product-mobile-control product-mobile-control-direction product-mobile-control-right"
+          aria-label="Move right"
+          title="Move right"
           onClick={() => void controls.handleMove("right")}
           disabled={Boolean(controls.validateMove("right")) || model.gameplay.isActionLocked}
         >
-          Right
+          <span aria-hidden="true" className="product-mobile-control-icon">→</span>
+        </button>
+        <button
+          type="button"
+          className="product-mobile-control product-mobile-control-direction product-mobile-control-down"
+          aria-label="Move down"
+          title="Move down"
+          onClick={() => void controls.handleMove("down")}
+          disabled={Boolean(controls.validateMove("down")) || model.gameplay.isActionLocked}
+        >
+          <span aria-hidden="true" className="product-mobile-control-icon">↓</span>
         </button>
       </div>
+
       <button
         type="button"
-        onClick={() => void controls.handleMove("down")}
-        disabled={Boolean(controls.validateMove("down")) || model.gameplay.isActionLocked}
+        className="product-mobile-control product-mobile-control-primary is-primary"
+        onClick={() => void (!portalValidation ? controls.handleUsePortal() : controls.handlePass())}
+        disabled={isCenterDisabled}
       >
-        Down
+        <span className="product-mobile-control-label">{centerLabel}</span>
       </button>
     </div>
   );
@@ -586,12 +607,14 @@ function ProductMapViewport({
   model,
   mapModel,
   viewportRef,
+  overlayStackRef,
   layoutBudget,
   effectiveViewportSize,
 }: {
   model: GameplayProductScreenModel;
   mapModel: ReturnType<typeof useMapBoardV2Model>;
   viewportRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
+  overlayStackRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
   layoutBudget: ProductMapLayoutBudget;
   effectiveViewportSize: { width: number; height: number };
 }) {
@@ -726,7 +749,7 @@ function ProductMapViewport({
           />
         </div>
       </div>
-      <ProductMapHud model={model} />
+      <ProductMapHud model={model} overlayStackRef={overlayStackRef} />
       <ProductSelectedCellCard mapModel={mapModel} />
       <ProductUpgradeSelection model={model} />
     </div>
@@ -736,10 +759,11 @@ function ProductMapViewport({
 export function GameplayProductMap({ model }: GameplayProductMapProps) {
   const runState = model.gameplay.runState!;
   const [viewportRef, viewportSize] = useElementSize<HTMLDivElement>();
+  const [overlayStackRef, overlayStackSize] = useElementSize<HTMLDivElement>();
   const hasPendingUpgradeSelection = model.gameplay.upgrades.hasPendingUpgradeSelection;
   const layoutBudget = useMemo(
-    () => resolveMapLayoutBudget(viewportSize.width, viewportSize.height, hasPendingUpgradeSelection),
-    [hasPendingUpgradeSelection, viewportSize.height, viewportSize.width],
+    () => resolveMapLayoutBudget(viewportSize.width, viewportSize.height, hasPendingUpgradeSelection, overlayStackSize.height),
+    [hasPendingUpgradeSelection, overlayStackSize.height, viewportSize.height, viewportSize.width],
   );
   const effectiveViewportSize = useMemo(
     () => ({
@@ -797,6 +821,7 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
           model={model}
           mapModel={mapModel}
           viewportRef={viewportRef}
+          overlayStackRef={overlayStackRef}
           layoutBudget={layoutBudget}
           effectiveViewportSize={effectiveViewportSize}
         />
