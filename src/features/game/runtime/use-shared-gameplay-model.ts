@@ -45,6 +45,9 @@ export function useSharedGameplayModel(options: UseSharedGameplayModelOptions = 
     upgrades: {
       pendingUpgradeOptions: runSession.pendingUpgradeOptions,
       hasPendingUpgradeSelection: runSession.hasPendingUpgradeSelection,
+      nextRerollCost: runSession.nextRerollCost,
+      canEstimateNextRerollCost: runSession.canEstimateNextRerollCost,
+      hasEnoughTreasureForReroll: runSession.hasEnoughTreasureForReroll,
       rerollValidationError: runActions.rerollValidationError,
       isRerollDisabled: runActions.isRerollDisabled,
       runRerollMutation: runActions.runRerollMutation,

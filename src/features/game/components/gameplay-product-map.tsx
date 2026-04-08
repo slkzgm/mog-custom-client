@@ -532,6 +532,11 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
   const player = model.gameplay.runState?.player;
   const rewardLabel = model.gameplay.runSession.mode.rewardLabel;
   const rewardValue = getRunModeRewardValue(model.gameplay.runSession.runType, player);
+  const nextRerollCost = model.gameplay.upgrades.nextRerollCost;
+  const rerollLabel =
+    model.gameplay.upgrades.canEstimateNextRerollCost && typeof nextRerollCost === "number"
+      ? `Reroll (${nextRerollCost} ${rewardLabel})`
+      : "Reroll";
   const activeUpgrades =
     player?.upgrades.filter((upgrade) =>
       isUpgradeUiCurrentlyActive(upgrade, {
@@ -612,8 +617,9 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
           className="product-button product-button-secondary"
           onClick={() => void model.gameplay.upgrades.handleRerollUpgrades()}
           disabled={model.gameplay.upgrades.isRerollDisabled}
+          title={model.gameplay.upgrades.rerollValidationError ?? rerollLabel}
         >
-          {model.gameplay.upgrades.runRerollMutation.isPending ? "Rerolling..." : "Reroll"}
+          {model.gameplay.upgrades.runRerollMutation.isPending ? "Rerolling..." : rerollLabel}
         </button>
       </div>
     </section>
