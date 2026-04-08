@@ -115,7 +115,7 @@ export function useRunDerivedState(gameState: GameStateSnapshot | null, enabled 
   const nextRerollCost =
     typeof gameState?.nextRerollCost === "number" && gameState.nextRerollCost >= 0
       ? gameState.nextRerollCost
-      : estimateNextRerollCost(gameState?.currentRerollCount);
+      : estimateNextRerollCost(gameState?.runType ?? "NORMAL", gameState?.currentRerollCount);
   const canEstimateNextRerollCost = typeof nextRerollCost === "number";
   const playerTreasure = getRunModeRewardValue(gameState?.runType ?? "NORMAL", player);
   const hasEnoughTreasureForReroll =

@@ -1,4 +1,5 @@
 import { ApiError } from "../../../lib/http/api-error";
+import type { RunType } from "../game.types";
 
 export function formatGameError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -104,16 +105,21 @@ export function shouldIgnoreGameplayHotkey(event: KeyboardEvent): boolean {
   return Boolean(target.closest("input, textarea, select, [contenteditable]"));
 }
 
-export function estimateNextRerollCost(currentRerollCount: number | null | undefined): number | null {
+export function estimateNextRerollCost(
+  runType: RunType,
+  currentRerollCount: number | null | undefined,
+): number | null {
   if (typeof currentRerollCount !== "number" || !Number.isSafeInteger(currentRerollCount)) return null;
   if (currentRerollCount < 0) return null;
 
   const nextRerollNumber = currentRerollCount + 1;
-  if (nextRerollNumber === 1) return 10;
-  if (nextRerollNumber === 2) return 20;
+  const firstCost = runType === "WORLD" ? 1 : 10;
+  const secondCost = runType === "WORLD" ? 2 : 20;
+  if (nextRerollNumber === 1) return firstCost;
+  if (nextRerollNumber === 2) return secondCost;
 
-  let previousCost = 10;
-  let currentCost = 20;
+  let previousCost = firstCost;
+  let currentCost = secondCost;
 
   for (let rerollNumber = 3; rerollNumber <= nextRerollNumber; rerollNumber += 1) {
     const nextCost = previousCost + currentCost;
