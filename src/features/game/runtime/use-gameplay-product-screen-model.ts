@@ -147,8 +147,10 @@ export function useGameplayProductScreenModel() {
     appendCompletedRun(completedRun);
     normalGameplay.runSession.runtimeState.clearCompletedRun();
     setCurrentView("menu");
+    void refreshLobbyData();
   }, [
     appendCompletedRun,
+    refreshLobbyData,
     normalGameplay.runSession.runtimeState,
     normalGameplay.runSession.runtimeState.completedRunSummary,
   ]);
@@ -160,8 +162,10 @@ export function useGameplayProductScreenModel() {
     appendCompletedRun(completedRun);
     worldGameplay.runSession.runtimeState.clearCompletedRun();
     setCurrentView("menu");
+    void refreshLobbyData();
   }, [
     appendCompletedRun,
+    refreshLobbyData,
     worldGameplay.runSession.runtimeState,
     worldGameplay.runSession.runtimeState.completedRunSummary,
   ]);
