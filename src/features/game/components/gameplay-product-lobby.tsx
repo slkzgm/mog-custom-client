@@ -1,5 +1,7 @@
 import { shortenAddress } from "../../auth/use-auth-controller";
+import { getRunModeDefinition } from "../game-modes";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
+import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 
 interface GameplayProductLobbyProps {
   model: GameplayProductScreenModel;
@@ -221,6 +223,54 @@ function BuyKeysPanel({ model }: GameplayProductLobbyProps) {
   );
 }
 
+function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
+  if (model.completedRunHistory.length === 0) return null;
+
+  return (
+    <section className="product-card product-history-card">
+      <div className="product-mode-card-header">
+        <span className="product-card-label">Local History</span>
+        <button type="button" className="product-button product-button-ghost" onClick={model.clearCompletedRunHistory}>
+          Clear
+        </button>
+      </div>
+      <h2>Recent Runs</h2>
+      <div className="product-history-list">
+        {model.completedRunHistory.slice(0, 8).map((entry) => {
+          const mode = getRunModeDefinition(entry.runType ?? "NORMAL");
+
+          return (
+            <article key={`${entry.runId ?? "run"}:${entry.endedAt}`} className="product-history-entry">
+              <div className="product-history-entry-header">
+                <strong>{mode.label}</strong>
+                <span>{entry.outcome === "victory" ? "Victory" : "Run Ended"}</span>
+              </div>
+              <div className="product-history-entry-grid">
+                <div>
+                  <span>Floor</span>
+                  <strong>{entry.currentFloor ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Turn</span>
+                  <strong>{entry.turnNumber ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Energy</span>
+                  <strong>{formatCurrentMaxValue(entry.energy, entry.maxEnergy)}</strong>
+                </div>
+                <div>
+                  <span>Upgrades</span>
+                  <strong>{entry.upgradesCount}</strong>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function GameplayProductLobby({ model }: GameplayProductLobbyProps) {
   return (
     <section className="product-lobby">
@@ -241,6 +291,7 @@ export function GameplayProductLobby({ model }: GameplayProductLobbyProps) {
             ))}
           </div>
           <BuyKeysPanel model={model} />
+          <RunHistoryPanel model={model} />
         </>
       ) : null}
     </section>

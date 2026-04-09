@@ -6,6 +6,7 @@ import type { RunType } from "../game.types";
 import { useClaimsQuery } from "../use-claims-query";
 import { useItemBalanceQuery } from "../use-item-balance-query";
 import { useBuyKeysController } from "./use-buy-keys-controller";
+import { useLocalRunHistory } from "./run-history";
 import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
 const GAMEPLAY_FEEL_STORAGE_KEY = "mog.gameplay-feel-mode.v1";
@@ -45,6 +46,13 @@ export function useGameplayProductScreenModel() {
   });
   const amberBalanceQuery = useItemBalanceQuery("amber", auth.isAuthenticated);
   const claimsQuery = useClaimsQuery(auth.isAuthenticated);
+  const {
+    history: completedRunHistory,
+    activeRecap: completedRunRecap,
+    appendCompletedRun,
+    dismissActiveRecap: dismissCompletedRunRecap,
+    clearHistory: clearCompletedRunHistory,
+  } = useLocalRunHistory();
   const refreshLobbyData = useCallback(async () => {
     await Promise.all([
       normalGameplay.runSession.activeRunQuery.refetch(),
@@ -132,6 +140,32 @@ export function useGameplayProductScreenModel() {
     };
   }, [pollLobbyData, shouldPollLobbyData]);
 
+  useEffect(() => {
+    const completedRun = normalGameplay.runSession.runtimeState.completedRunSummary;
+    if (!completedRun) return;
+
+    appendCompletedRun(completedRun);
+    normalGameplay.runSession.runtimeState.clearCompletedRun();
+    setCurrentView("menu");
+  }, [
+    appendCompletedRun,
+    normalGameplay.runSession.runtimeState,
+    normalGameplay.runSession.runtimeState.completedRunSummary,
+  ]);
+
+  useEffect(() => {
+    const completedRun = worldGameplay.runSession.runtimeState.completedRunSummary;
+    if (!completedRun) return;
+
+    appendCompletedRun(completedRun);
+    worldGameplay.runSession.runtimeState.clearCompletedRun();
+    setCurrentView("menu");
+  }, [
+    appendCompletedRun,
+    worldGameplay.runSession.runtimeState,
+    worldGameplay.runSession.runtimeState.completedRunSummary,
+  ]);
+
   function openMenu() {
     setCurrentView("menu");
   }
@@ -176,6 +210,10 @@ export function useGameplayProductScreenModel() {
     enableOptimisticPlayerPreview,
     setGameplayFeelMode,
     refreshLobbyData,
+    completedRunRecap,
+    dismissCompletedRunRecap,
+    completedRunHistory,
+    clearCompletedRunHistory,
     openMenu,
     openRun,
   };

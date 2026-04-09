@@ -17,6 +17,7 @@ import { useRunRerollMutation } from "../use-run-reroll-mutation";
 import { useSelectUpgradeMutation } from "../use-select-upgrade-mutation";
 import { useRunTeleportMutation } from "../use-run-teleport-mutation";
 import type { RunSessionController } from "./use-run-session-controller";
+import { createCompletedRunSummary } from "./run-history";
 
 interface RunQueuedActionParams {
   queuedState: GameStateSnapshot;
@@ -283,6 +284,9 @@ export function useRunActionsController(
             runSession.runtimeState.replaceLocalGameState(result.gameState);
           }
           runSession.runtimeState.replaceLastMoveEvents(result.events);
+          if (result.isGameOver) {
+            runSession.runtimeState.recordCompletedRun(createCompletedRunSummary(result.gameState ?? queuedState));
+          }
         } finally {
           runSession.runtimeState.clearOptimisticPlayerPosition();
         }
@@ -299,7 +303,7 @@ export function useRunActionsController(
   );
 
   const executePass = useCallback(async () => {
-    await runQueuedRuntimeAction("pass", async ({ queuedRunId }) => {
+    await runQueuedRuntimeAction("pass", async ({ queuedState, queuedRunId }) => {
       const result = await runMoveMutation.mutateAsync({
         runId: queuedRunId,
         actionType: "pass",
@@ -309,6 +313,9 @@ export function useRunActionsController(
         runSession.runtimeState.replaceLocalGameState(result.gameState);
       }
       runSession.runtimeState.replaceLastMoveEvents(result.events);
+      if (result.isGameOver) {
+        runSession.runtimeState.recordCompletedRun(createCompletedRunSummary(result.gameState ?? queuedState));
+      }
     });
   }, [runMoveMutation, runQueuedRuntimeAction, runSession.runtimeState]);
 
@@ -390,6 +397,9 @@ export function useRunActionsController(
         runSession.runtimeState.replaceLocalGameState(result.gameState);
       }
       runSession.runtimeState.replaceLastMoveEvents(result.events);
+      if (result.isGameOver) {
+        runSession.runtimeState.recordCompletedRun(createCompletedRunSummary(result.gameState ?? queuedState));
+      }
     });
   }, [runQueuedRuntimeAction, runSession.runtimeState, runTeleportMutation]);
 
@@ -438,6 +448,12 @@ export function useRunActionsController(
         runSession.runtimeState.replaceLocalGameState(result.gameState);
       }
       runSession.runtimeState.replaceLastMoveEvents(result.events);
+      if (result.isGameOver) {
+        const completedGameState = result.gameState ?? runSession.effectiveGameState;
+        if (completedGameState) {
+          runSession.runtimeState.recordCompletedRun(createCompletedRunSummary(completedGameState));
+        }
+      }
       runSession.runtimeState.recordActionMetrics(`upgrade:${upgradeId}`, startedAtMs);
     },
     [runSession, selectUpgradeMutation],

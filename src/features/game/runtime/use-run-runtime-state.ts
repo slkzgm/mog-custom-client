@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import type { GamePlayerSnapshot, GameStateSnapshot } from "../game.types";
 import { parseLatestPortalPromptEvent } from "./game-event-parsers";
+import type { CompletedRunSummary } from "./run-history";
 
 export interface RuntimeActionMetrics {
   lastActionLatencyMs: number | null;
@@ -47,6 +48,7 @@ export function useRunRuntimeState() {
   const [lastMoveEvents, setLastMoveEvents] = useState<Record<string, unknown>[]>([]);
   const [portalPrompt, setPortalPrompt] = useState<RuntimePortalPrompt | null>(null);
   const [optimisticPlayerPosition, setOptimisticPlayerPosition] = useState<OptimisticPlayerPosition | null>(null);
+  const [completedRunSummary, setCompletedRunSummary] = useState<CompletedRunSummary | null>(null);
   const [metrics, setMetrics] = useState<RuntimeActionMetrics>({
     lastActionLatencyMs: null,
     lastActionName: null,
@@ -87,12 +89,21 @@ export function useRunRuntimeState() {
     });
   }, []);
 
+  const recordCompletedRun = useCallback((summary: CompletedRunSummary) => {
+    setCompletedRunSummary(summary);
+  }, []);
+
+  const clearCompletedRun = useCallback(() => {
+    setCompletedRunSummary(null);
+  }, []);
+
   return {
     localGameState,
     localGameStateRef,
     lastMoveEvents,
     portalPrompt,
     optimisticPlayerPosition,
+    completedRunSummary,
     metrics,
     replaceLocalGameState,
     replaceLastMoveEvents,
@@ -100,5 +111,7 @@ export function useRunRuntimeState() {
     showOptimisticPlayerPosition,
     clearOptimisticPlayerPosition,
     recordActionMetrics,
+    recordCompletedRun,
+    clearCompletedRun,
   };
 }

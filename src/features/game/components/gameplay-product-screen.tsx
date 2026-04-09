@@ -2,6 +2,8 @@ import { useGameplayProductScreenModel } from "../runtime/use-gameplay-product-s
 import { shortenAddress } from "../../auth/use-auth-controller";
 import { GameplayProductLobby } from "./gameplay-product-lobby";
 import { GameplayProductMap } from "./gameplay-product-map";
+import { getRunModeDefinition } from "../game-modes";
+import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 
 function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductScreenModel> }) {
   const player = model.gameplay.runState?.player;
@@ -85,6 +87,55 @@ export function GameplayProductScreen() {
       <div className="product-shell-body">
         {model.shouldShowRun ? <GameplayProductMap model={model} /> : <GameplayProductLobby model={model} />}
       </div>
+      {model.completedRunRecap ? <CompletedRunRecapModal model={model} /> : null}
     </main>
+  );
+}
+
+function CompletedRunRecapModal({ model }: { model: ReturnType<typeof useGameplayProductScreenModel> }) {
+  const recap = model.completedRunRecap;
+  if (!recap) return null;
+
+  const mode = getRunModeDefinition(recap.runType ?? "NORMAL");
+
+  return (
+    <div className="product-run-recap-backdrop" role="presentation" onClick={model.dismissCompletedRunRecap}>
+      <section
+        className="product-run-recap-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-run-recap-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span className="product-card-label">Run Recap</span>
+        <h2 id="product-run-recap-title">{recap.outcome === "victory" ? "Run Cleared" : "Run Ended"}</h2>
+        <p>
+          {mode.label} finished on floor {recap.currentFloor ?? "-"} at turn {recap.turnNumber ?? "-"}.
+        </p>
+        <div className="product-history-entry-grid">
+          <div>
+            <span>Energy</span>
+            <strong>{formatCurrentMaxValue(recap.energy, recap.maxEnergy)}</strong>
+          </div>
+          <div>
+            <span>Treasure</span>
+            <strong>{recap.treasure ?? "-"}</strong>
+          </div>
+          <div>
+            <span>Marbles</span>
+            <strong>{recap.marbles ?? "-"}</strong>
+          </div>
+          <div>
+            <span>Upgrades</span>
+            <strong>{recap.upgradesCount}</strong>
+          </div>
+        </div>
+        <div className="product-card-actions">
+          <button type="button" className="product-button product-button-primary" onClick={model.dismissCompletedRunRecap}>
+            Back To Menu
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
