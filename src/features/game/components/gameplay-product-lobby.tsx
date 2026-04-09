@@ -265,8 +265,8 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
                   <strong>{entry.keysUsed ?? "-"}</strong>
                 </div>
                 <div>
-                  <span>Skeleton King</span>
-                  <strong>{entry.skDefeated ? "Killed" : "Alive"}</strong>
+                  <span>Skeleton King Defeated</span>
+                  <strong>{entry.skDefeated ? "Yes" : "No"}</strong>
                 </div>
                 <div>
                   <span>Floor</span>

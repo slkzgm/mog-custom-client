@@ -136,8 +136,8 @@ function CompletedRunRecapModal({ model }: { model: ReturnType<typeof useGamepla
             <strong>{formatCurrentMaxValue(recap.energy, recap.maxEnergy)}</strong>
           </div>
           <div>
-            <span>Skeleton King</span>
-            <strong>{recap.skDefeated ? "Killed" : "Alive"}</strong>
+            <span>Skeleton King Defeated</span>
+            <strong>{recap.skDefeated ? "Yes" : "No"}</strong>
           </div>
           <div>
             <span>Rerolls</span>
