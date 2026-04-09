@@ -1,5 +1,6 @@
 import { shortenAddress } from "../../auth/use-auth-controller";
 import { getRunModeDefinition } from "../game-modes";
+import type { RunType } from "../game.types";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 
@@ -7,6 +8,52 @@ function formatUpgradesPerFloor(upgradesPerFloor: Record<string, string>) {
   const entries = Object.entries(upgradesPerFloor).sort(([leftFloor], [rightFloor]) => Number(leftFloor) - Number(rightFloor));
   if (entries.length === 0) return "No upgrades recorded";
   return entries.map(([floor, upgrade]) => `F${floor}: ${upgrade}`).join(" • ");
+}
+
+function formatAverage(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "-";
+  return value.toFixed(1);
+}
+
+function computeHistoryStats(entries: GameplayProductScreenModel["completedRunHistory"]) {
+  if (entries.length === 0) {
+    return {
+      rewardPerKey: null,
+      marblesPerKey: null,
+      averageFloor: null,
+      skeletonKingDefeatedCount: 0,
+    };
+  }
+
+  const totals = entries.reduce(
+    (accumulator, entry) => {
+      const keysUsed = entry.keysUsed ?? 0;
+
+      return {
+        totalReward: accumulator.totalReward + (entry.rewardValue ?? 0),
+        totalMarbles: accumulator.totalMarbles + (entry.marbles ?? 0),
+        totalKeysUsed: accumulator.totalKeysUsed + keysUsed,
+        totalFloor: accumulator.totalFloor + (entry.currentFloor ?? 0),
+        runCount: accumulator.runCount + 1,
+        skeletonKingDefeatedCount: accumulator.skeletonKingDefeatedCount + (entry.skDefeated ? 1 : 0),
+      };
+    },
+    {
+      totalReward: 0,
+      totalMarbles: 0,
+      totalKeysUsed: 0,
+      totalFloor: 0,
+      runCount: 0,
+      skeletonKingDefeatedCount: 0,
+    },
+  );
+
+  return {
+    rewardPerKey: totals.totalKeysUsed > 0 ? totals.totalReward / totals.totalKeysUsed : null,
+    marblesPerKey: totals.totalKeysUsed > 0 ? totals.totalMarbles / totals.totalKeysUsed : null,
+    averageFloor: totals.runCount > 0 ? totals.totalFloor / totals.runCount : null,
+    skeletonKingDefeatedCount: totals.skeletonKingDefeatedCount,
+  };
 }
 
 interface GameplayProductLobbyProps {
@@ -229,8 +276,101 @@ function BuyKeysPanel({ model }: GameplayProductLobbyProps) {
   );
 }
 
+function RunHistoryModeSection({
+  runType,
+  entries,
+}: {
+  runType: RunType;
+  entries: GameplayProductScreenModel["completedRunHistory"];
+}) {
+  if (entries.length === 0) return null;
+
+  const mode = getRunModeDefinition(runType);
+  const stats = computeHistoryStats(entries);
+
+  return (
+    <section className={`product-history-mode-section product-history-mode-section-${mode.accent}`}>
+      <div className="product-history-mode-header">
+        <div>
+          <span className="product-card-label">{mode.runType}</span>
+          <h3>{mode.label}</h3>
+        </div>
+        <strong>{entries.length} run(s)</strong>
+      </div>
+
+      <div className="product-history-summary-grid">
+        <div>
+          <span>{mode.rewardLabel} / Key</span>
+          <strong>{formatAverage(stats.rewardPerKey)}</strong>
+        </div>
+        <div>
+          <span>Marbles / Key</span>
+          <strong>{formatAverage(stats.marblesPerKey)}</strong>
+        </div>
+        <div>
+          <span>Avg. Floor</span>
+          <strong>{formatAverage(stats.averageFloor)}</strong>
+        </div>
+        <div>
+          <span>SK Defeated</span>
+          <strong>{stats.skeletonKingDefeatedCount}</strong>
+        </div>
+      </div>
+
+      <div className="product-history-list">
+        {entries.slice(0, 6).map((entry) => (
+          <article key={`${entry.runId ?? "run"}:${entry.endedAt}`} className="product-history-entry">
+            <div className="product-history-entry-header">
+              <strong>{entry.outcome === "victory" ? "Victory" : "Run Ended"}</strong>
+              <span>{new Date(entry.endedAt).toLocaleString()}</span>
+            </div>
+            <div className="product-history-entry-grid">
+              <div>
+                <span>{mode.rewardLabel}</span>
+                <strong>{entry.rewardValue ?? "-"}</strong>
+              </div>
+              <div>
+                <span>Marbles</span>
+                <strong>{entry.marbles ?? "-"}</strong>
+              </div>
+              <div>
+                <span>Keys</span>
+                <strong>{entry.keysUsed ?? "-"}</strong>
+              </div>
+              <div>
+                <span>Skeleton King Defeated</span>
+                <strong>{entry.skDefeated ? "Yes" : "No"}</strong>
+              </div>
+              <div>
+                <span>Floor</span>
+                <strong>{entry.currentFloor ?? "-"}</strong>
+              </div>
+              <div>
+                <span>Turn</span>
+                <strong>{entry.turnNumber ?? "-"}</strong>
+              </div>
+              <div>
+                <span>Rerolls</span>
+                <strong>{entry.rerollCount ?? 0}</strong>
+              </div>
+              <div>
+                <span>Energy</span>
+                <strong>{formatCurrentMaxValue(entry.energy, entry.maxEnergy)}</strong>
+              </div>
+            </div>
+            <p className="product-card-note">{formatUpgradesPerFloor(entry.upgradesPerFloor)}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
   if (model.completedRunHistory.length === 0) return null;
+
+  const normalEntries = model.completedRunHistory.filter((entry) => (entry.runType ?? "NORMAL") === "NORMAL");
+  const worldEntries = model.completedRunHistory.filter((entry) => entry.runType === "WORLD");
 
   return (
     <section className="product-card product-history-card">
@@ -241,54 +381,9 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
         </button>
       </div>
       <h2>Recent Runs</h2>
-      <div className="product-history-list">
-        {model.completedRunHistory.slice(0, 8).map((entry) => {
-          const mode = getRunModeDefinition(entry.runType ?? "NORMAL");
-
-          return (
-            <article key={`${entry.runId ?? "run"}:${entry.endedAt}`} className="product-history-entry">
-              <div className="product-history-entry-header">
-                <strong>{mode.label}</strong>
-                <span>{entry.outcome === "victory" ? "Victory" : "Run Ended"}</span>
-              </div>
-              <div className="product-history-entry-grid">
-                <div>
-                  <span>{mode.rewardLabel}</span>
-                  <strong>{entry.rewardValue ?? "-"}</strong>
-                </div>
-                <div>
-                  <span>Marbles</span>
-                  <strong>{entry.marbles ?? "-"}</strong>
-                </div>
-                <div>
-                  <span>Keys</span>
-                  <strong>{entry.keysUsed ?? "-"}</strong>
-                </div>
-                <div>
-                  <span>Skeleton King Defeated</span>
-                  <strong>{entry.skDefeated ? "Yes" : "No"}</strong>
-                </div>
-                <div>
-                  <span>Floor</span>
-                  <strong>{entry.currentFloor ?? "-"}</strong>
-                </div>
-                <div>
-                  <span>Turn</span>
-                  <strong>{entry.turnNumber ?? "-"}</strong>
-                </div>
-                <div>
-                  <span>Rerolls</span>
-                  <strong>{entry.rerollCount ?? 0}</strong>
-                </div>
-                <div>
-                  <span>Energy</span>
-                  <strong>{formatCurrentMaxValue(entry.energy, entry.maxEnergy)}</strong>
-                </div>
-              </div>
-              <p className="product-card-note">{formatUpgradesPerFloor(entry.upgradesPerFloor)}</p>
-            </article>
-          );
-        })}
+      <div className="product-history-mode-stack">
+        <RunHistoryModeSection runType="NORMAL" entries={normalEntries} />
+        <RunHistoryModeSection runType="WORLD" entries={worldEntries} />
       </div>
     </section>
   );
