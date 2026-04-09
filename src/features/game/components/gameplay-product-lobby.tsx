@@ -58,6 +58,21 @@ function computeHistoryStats(entries: GameplayProductScreenModel["completedRunHi
   };
 }
 
+function computeRewardPerKey(entries: GameplayProductScreenModel["completedRunHistory"]) {
+  const totals = entries.reduce(
+    (accumulator, entry) => ({
+      totalReward: accumulator.totalReward + (entry.rewardValue ?? 0),
+      totalKeysUsed: accumulator.totalKeysUsed + (entry.keysUsed ?? 0),
+    }),
+    {
+      totalReward: 0,
+      totalKeysUsed: 0,
+    },
+  );
+
+  return totals.totalKeysUsed > 0 ? totals.totalReward / totals.totalKeysUsed : null;
+}
+
 interface GameplayProductLobbyProps {
   model: GameplayProductScreenModel;
 }
@@ -287,15 +302,15 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
     if (historyFilter === "all") return model.completedRunHistory;
     return model.completedRunHistory.filter((entry) => (entry.runType ?? "NORMAL") === historyFilter);
   }, [historyFilter, model.completedRunHistory]);
-  const visibleModes = useMemo(() => {
-    if (historyFilter === "all") {
-      return (["NORMAL", "WORLD"] as const).filter((runType) =>
-        model.completedRunHistory.some((entry) => (entry.runType ?? "NORMAL") === runType),
-      );
-    }
-
-    return [historyFilter];
-  }, [historyFilter, model.completedRunHistory]);
+  const filteredStats = useMemo(() => computeHistoryStats(filteredEntries), [filteredEntries]);
+  const allNormalEntries = useMemo(
+    () => model.completedRunHistory.filter((entry) => (entry.runType ?? "NORMAL") === "NORMAL"),
+    [model.completedRunHistory],
+  );
+  const allWorldEntries = useMemo(
+    () => model.completedRunHistory.filter((entry) => entry.runType === "WORLD"),
+    [model.completedRunHistory],
+  );
 
   return (
     <section className="product-card product-history-card">
@@ -326,38 +341,49 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
       </div>
 
       <div className="product-history-summary-strip">
-        {visibleModes.map((runType) => {
-          const modeEntries = model.completedRunHistory.filter((entry) => (entry.runType ?? "NORMAL") === runType);
-          const mode = getRunModeDefinition(runType);
-          const stats = computeHistoryStats(modeEntries);
-
-          return (
-            <div key={runType} className={`product-history-summary-column is-${mode.accent}`}>
-              <div className="product-history-summary-header">
-                <span className="product-card-label">{mode.label}</span>
-                <strong>{modeEntries.length} run(s)</strong>
-              </div>
-              <div className="product-history-summary-grid">
-                <div>
-                  <span>{mode.rewardLabel} / Key</span>
-                  <strong>{formatAverage(stats.rewardPerKey)}</strong>
-                </div>
-                <div>
-                  <span>Marbles / Key</span>
-                  <strong>{formatAverage(stats.marblesPerKey)}</strong>
-                </div>
-                <div>
-                  <span>Avg. Floor</span>
-                  <strong>{formatAverage(stats.averageFloor)}</strong>
-                </div>
-                <div>
-                  <span>SK Defeated</span>
-                  <strong>{stats.skeletonKingDefeatedCount}</strong>
-                </div>
-              </div>
+        {historyFilter === "all" ? (
+          <>
+            <div className="product-history-summary-item is-gold">
+              <span>Treasure / Key</span>
+              <strong>{formatAverage(computeRewardPerKey(allNormalEntries))}</strong>
             </div>
-          );
-        })}
+            <div className="product-history-summary-item is-ember">
+              <span>Amber / Key</span>
+              <strong>{formatAverage(computeRewardPerKey(allWorldEntries))}</strong>
+            </div>
+            <div className="product-history-summary-item">
+              <span>Marbles / Key</span>
+              <strong>{formatAverage(filteredStats.marblesPerKey)}</strong>
+            </div>
+            <div className="product-history-summary-item">
+              <span>Avg. Floor</span>
+              <strong>{formatAverage(filteredStats.averageFloor)}</strong>
+            </div>
+            <div className="product-history-summary-item">
+              <span>SK Defeated</span>
+              <strong>{filteredStats.skeletonKingDefeatedCount}</strong>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={`product-history-summary-item is-${getRunModeDefinition(historyFilter).accent}`}>
+              <span>{getRunModeDefinition(historyFilter).rewardLabel} / Key</span>
+              <strong>{formatAverage(filteredStats.rewardPerKey)}</strong>
+            </div>
+            <div className="product-history-summary-item">
+              <span>Marbles / Key</span>
+              <strong>{formatAverage(filteredStats.marblesPerKey)}</strong>
+            </div>
+            <div className="product-history-summary-item">
+              <span>Avg. Floor</span>
+              <strong>{formatAverage(filteredStats.averageFloor)}</strong>
+            </div>
+            <div className="product-history-summary-item">
+              <span>SK Defeated</span>
+              <strong>{filteredStats.skeletonKingDefeatedCount}</strong>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="product-history-list">
@@ -365,7 +391,7 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
           const mode = getRunModeDefinition(entry.runType ?? "NORMAL");
 
           return (
-            <article key={`${entry.runId ?? "run"}:${entry.endedAt}`} className="product-history-entry">
+            <article key={`${entry.runId ?? "run"}:${entry.endedAt}`} className={`product-history-entry is-${mode.accent}`}>
               <div className="product-history-entry-header">
                 <strong>{entry.outcome === "victory" ? "Victory" : "Run Ended"}</strong>
                 <span>
