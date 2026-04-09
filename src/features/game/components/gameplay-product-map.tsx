@@ -14,6 +14,7 @@ import { useMapBoardV2Model } from "./use-map-board-v2-model";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { getRunModeRewardValue } from "../game-modes";
 import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
+import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 import {
   getUpgradeUiDescription,
   getUpgradeUiDurationText,
@@ -223,6 +224,18 @@ function ProductSelectedCellCard({
       {selectedCell.entity ? (
         <div className="product-map-details-section">
           <p className="product-map-details-title">{selectedCell.entity.kind}</p>
+          {selectedCell.entity.kind === "player" ? (
+            <div className="product-map-details-grid">
+              <div>
+                <span>Energy</span>
+                <strong>{formatCurrentMaxValue(mapModel.gameState.player?.energy, mapModel.gameState.player?.maxEnergy)}</strong>
+              </div>
+              <div>
+                <span>Treasure</span>
+                <strong>{mapModel.gameState.player?.treasure ?? "-"}</strong>
+              </div>
+            </div>
+          ) : null}
           {selectedCell.entity.badges.length > 0 ? (
             <div className="product-map-details-badges">
               {selectedCell.entity.badges.map((badge) => (
@@ -401,12 +414,14 @@ function ProductMapHud({
     <div ref={overlayStackRef} className="product-map-overlay-stack">
       <div className="product-map-overlay product-map-overlay-stats">
         <div className="product-map-stat">
-          <span>Floor</span>
-          <strong>{model.gameplay.runState?.currentFloor ?? "-"}</strong>
+          <span>Floor / Turn</span>
+          <strong>
+            {model.gameplay.runState?.currentFloor ?? "-"} / {model.gameplay.runState?.turnNumber ?? "-"}
+          </strong>
         </div>
         <div className="product-map-stat">
-          <span>Turn</span>
-          <strong>{model.gameplay.runState?.turnNumber ?? "-"}</strong>
+          <span>Energy</span>
+          <strong>{formatCurrentMaxValue(player?.energy, player?.maxEnergy)}</strong>
         </div>
         <div className="product-map-stat">
           <span>Marbles</span>
@@ -553,10 +568,7 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
           <div className="product-upgrade-sheet-metrics">
             <div className="product-upgrade-sheet-metric">
               <span>Energy</span>
-              <strong>
-                {player?.energy ?? "-"}
-                {player?.maxEnergy !== null ? ` / ${player?.maxEnergy ?? "-"}` : ""}
-              </strong>
+              <strong>{formatCurrentMaxValue(player?.energy, player?.maxEnergy)}</strong>
             </div>
             <div className="product-upgrade-sheet-metric">
               <span>{rewardLabel}</span>

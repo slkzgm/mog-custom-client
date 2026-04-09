@@ -1,5 +1,6 @@
 import { isSkullEnemySprite } from "../map-enemy-visuals";
 import { isAttackableEnemy, isGhostEnemy } from "../game-map";
+import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 import type { MapBoardV2Model } from "./use-map-board-v2-model";
 import { intentArrow } from "./map-board-v2.utils";
 
@@ -102,7 +103,7 @@ export function MapBoardV2Sidebar({ model, portalActionTitle }: MapBoardV2Sideba
         </div>
         <div className="map2-kv">
           <span>Energy</span>
-          <strong>{gameState.player?.energy ?? "-"}</strong>
+          <strong>{formatCurrentMaxValue(gameState.player?.energy, gameState.player?.maxEnergy)}</strong>
         </div>
         <div className="map2-kv">
           <span>Treasure</span>

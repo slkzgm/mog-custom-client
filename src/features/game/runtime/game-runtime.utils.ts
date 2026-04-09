@@ -54,6 +54,15 @@ export function formatDurationMs(value: number | null): string {
   return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
 }
 
+export function formatCurrentMaxValue(
+  currentValue: number | null | undefined,
+  maxValue: number | null | undefined,
+): string {
+  const currentText = currentValue ?? "-";
+  if (maxValue === null || maxValue === undefined) return String(currentText);
+  return `${currentText} / ${maxValue}`;
+}
+
 export function countTileKinds(mapData: number[][] | null) {
   const counts = {
     wall: 0,
