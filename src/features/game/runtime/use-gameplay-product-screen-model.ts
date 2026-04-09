@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useState } from "react";
 
 import { useAuthController } from "../../auth/use-auth-controller";
 import { getRunModeDefinition, runModeOrder } from "../game-modes";
@@ -9,6 +9,7 @@ import { useBuyKeysController } from "./use-buy-keys-controller";
 import { useSharedGameplayModel } from "./use-shared-gameplay-model";
 
 const GAMEPLAY_FEEL_STORAGE_KEY = "mog.gameplay-feel-mode.v1";
+const LOBBY_REFRESH_INTERVAL_MS = 15_000;
 
 type GameplayFeelMode = "standard" | "preview";
 
@@ -44,7 +45,27 @@ export function useGameplayProductScreenModel() {
   });
   const amberBalanceQuery = useItemBalanceQuery("amber", auth.isAuthenticated);
   const claimsQuery = useClaimsQuery(auth.isAuthenticated);
-  const buyKeys = useBuyKeysController(normalGameplay.runSession);
+  const refreshLobbyData = useCallback(async () => {
+    await Promise.all([
+      normalGameplay.runSession.activeRunQuery.refetch(),
+      normalGameplay.runSession.balanceQuery.refetch(),
+      worldGameplay.runSession.activeRunQuery.refetch(),
+      worldGameplay.runSession.balanceQuery.refetch(),
+      amberBalanceQuery.refetch(),
+      claimsQuery.refetch(),
+    ]);
+  }, [
+    amberBalanceQuery,
+    claimsQuery,
+    normalGameplay.runSession.activeRunQuery,
+    normalGameplay.runSession.balanceQuery,
+    worldGameplay.runSession.activeRunQuery,
+    worldGameplay.runSession.balanceQuery,
+  ]);
+  const buyKeys = useBuyKeysController({
+    balanceQuery: normalGameplay.runSession.balanceQuery,
+    onPurchaseConfirmed: refreshLobbyData,
+  });
 
   const gameplayByType = {
     NORMAL: normalGameplay,
@@ -94,6 +115,22 @@ export function useGameplayProductScreenModel() {
   const shouldShowChainSwitch = auth.isWalletConnected && !auth.isOnExpectedChain;
   const shouldShowSignIn = auth.isWalletConnected && auth.isOnExpectedChain && !auth.isAuthenticated;
   const shouldShowLobby = !shouldShowRun;
+  const shouldPollLobbyData = auth.isAuthenticated && currentView === "menu";
+  const pollLobbyData = useEffectEvent(() => {
+    void refreshLobbyData();
+  });
+
+  useEffect(() => {
+    if (!shouldPollLobbyData) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      pollLobbyData();
+    }, LOBBY_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [pollLobbyData, shouldPollLobbyData]);
 
   function openMenu() {
     setCurrentView("menu");
@@ -138,6 +175,7 @@ export function useGameplayProductScreenModel() {
     gameplayFeelMode,
     enableOptimisticPlayerPreview,
     setGameplayFeelMode,
+    refreshLobbyData,
     openMenu,
     openRun,
   };

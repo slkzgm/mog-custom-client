@@ -19,7 +19,12 @@ const KEYS_CONTRACT_ABI = [
   },
 ] as const;
 
-export function useBuyKeysController(runSession: Pick<RunSessionController, "balanceQuery">) {
+interface UseBuyKeysControllerParams {
+  balanceQuery: Pick<RunSessionController["balanceQuery"], "refetch">;
+  onPurchaseConfirmed?: () => Promise<unknown> | unknown;
+}
+
+export function useBuyKeysController({ balanceQuery, onPurchaseConfirmed }: UseBuyKeysControllerParams) {
   const account = useAccount();
   const buyKeysMutation = useWriteContract();
   const buyKeysReceiptQuery = useWaitForTransactionReceipt({
@@ -56,8 +61,8 @@ export function useBuyKeysController(runSession: Pick<RunSessionController, "bal
     if (lastBuyKeysRefreshedTxHashRef.current === txHash) return;
 
     lastBuyKeysRefreshedTxHashRef.current = txHash;
-    void runSession.balanceQuery.refetch();
-  }, [buyKeysMutation.data, buyKeysReceiptQuery.isSuccess, runSession.balanceQuery]);
+    void Promise.all([balanceQuery.refetch(), Promise.resolve(onPurchaseConfirmed?.())]);
+  }, [balanceQuery, buyKeysMutation.data, buyKeysReceiptQuery.isSuccess, onPurchaseConfirmed]);
 
   const handleBuyKeys = useCallback(async () => {
     if (!canBuyKeys || parsedBuyKeysQuantity === null || parsedBuyKeysQuantity < 1 || buyKeysValueWei === null) return;
