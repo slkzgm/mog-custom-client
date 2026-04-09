@@ -294,6 +294,16 @@ function ProductSelectedCellCard({
           </div>
         </div>
       ) : null}
+
+      {selectedCell.action ? (
+        <button
+          type="button"
+          className="product-button product-button-secondary"
+          onClick={() => mapModel.handleActivateCell(selectedCell)}
+        >
+          {selectedCell.action.label}
+        </button>
+      ) : null}
     </aside>
   );
 }
@@ -357,7 +367,9 @@ function ProductMapToolbar({
           </div>
 
           <div className="product-map-toolbar-group">
-            <span className="product-map-toolbar-meta">Drag to pan • Wheel to zoom • Arrows move camera</span>
+            <span className="product-map-toolbar-meta">
+              Click once to inspect • Click again to act • Drag to pan • Wheel to zoom • Arrows move camera
+            </span>
           </div>
         </>
       ) : null}

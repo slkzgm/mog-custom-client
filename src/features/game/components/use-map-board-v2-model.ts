@@ -112,15 +112,15 @@ function resolveCellAction(params: {
     !isPortalActionDisabled &&
     !isActionLocked
   ) {
-    return { kind: "portal" as const };
+    return { kind: "portal" as const, label: "Use portal" };
   }
 
   if (isPlayerTile && onPassAction && !isActionLocked) {
-    return { kind: "pass" as const };
+    return { kind: "pass" as const, label: "Pass turn" };
   }
 
   if (hint && hint.kind !== "blocked" && onDirectionalAction && !isActionLocked) {
-    return { kind: "direction" as const, direction: hint.direction };
+    return { kind: "direction" as const, direction: hint.direction, label: hint.label };
   }
 
   return null;
@@ -401,7 +401,10 @@ export function useMapBoardV2Model({
   }, []);
 
   const handleActivateCell = useCallback((cell: MapBoardCellViewModel) => {
-    setSelectedKey(cell.key);
+    if (selectedKey !== cell.key) {
+      setSelectedKey(cell.key);
+      return;
+    }
 
     if (cell.action?.kind === "portal") {
       void onPortalAction?.();
@@ -416,7 +419,7 @@ export function useMapBoardV2Model({
     if (cell.action?.kind === "direction" && cell.action.direction) {
       void onDirectionalAction?.(cell.action.direction);
     }
-  }, [onDirectionalAction, onPassAction, onPortalAction]);
+  }, [onDirectionalAction, onPassAction, onPortalAction, selectedKey]);
 
   return {
     cells,

@@ -68,6 +68,7 @@ export interface CellEntity {
 
 export interface CellActivation {
   kind: "portal" | "pass" | "direction";
+  label: string;
   direction?: MoveDirection;
 }
 
