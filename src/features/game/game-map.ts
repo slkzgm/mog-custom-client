@@ -1,4 +1,5 @@
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "./game.types";
+import { effectiveFogValueAt } from "./game-visibility";
 import { interactiveSymbol, isRockInteractive } from "./map-interactive-visuals";
 
 interface MoveDelta {
@@ -183,7 +184,7 @@ export function buildAsciiMap(gameState: GameStateSnapshot): string[] {
     let renderedRow = `${toTwoDigits(y)} |`;
 
     for (let x = 0; x < row.length; x += 1) {
-      const fog = matrixAt(gameState.fogMask, x, y);
+      const fog = effectiveFogValueAt(gameState, x, y);
       const key = positionKey(x, y);
 
       if (player && player.x === x && player.y === y) {

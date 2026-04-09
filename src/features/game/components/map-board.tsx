@@ -9,6 +9,7 @@ import {
   isMoveTargetPassable,
   moveControlOrder,
 } from "../game-map";
+import { effectiveFogValueAt } from "../game-visibility";
 import { interactiveSymbol, isRockInteractive } from "../map-interactive-visuals";
 import { resolvePickupVisual } from "../map-pickup-visuals";
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
@@ -469,7 +470,7 @@ export function MapBoard({
     const isPlayerCell = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
     const key = keyOf(x, y);
 
-    const fog = fogLabel(matrixAt(gameState.fogMask, x, y));
+    const fog = fogLabel(effectiveFogValueAt(gameState, x, y));
     const tileValue = matrixAt(gameState.mapData, x, y);
     const tileDataValue = matrixAt(gameState.tileData, x, y);
     const entity = resolveEntityData({
@@ -598,7 +599,7 @@ export function MapBoard({
                 {xValues.map((x) => {
                   const key = keyOf(x, y);
                   const isPlayerCell = Boolean(gameState.player && gameState.player.x === x && gameState.player.y === y);
-                  const fog = fogLabel(matrixAt(gameState.fogMask, x, y));
+                  const fog = fogLabel(effectiveFogValueAt(gameState, x, y));
                   const tileValue = matrixAt(gameState.mapData, x, y);
                   const tileDataValue = matrixAt(gameState.tileData, x, y);
                   const hint = hintsByKey.get(key) ?? null;

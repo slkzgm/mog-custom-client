@@ -1,4 +1,5 @@
 import type { GameStateSnapshot } from "../game.types";
+import { isEffectivelyVisible } from "../game-visibility";
 
 export interface MapFogMemoryState {
   version: 1;
@@ -12,15 +13,6 @@ export function createEmptyMapFogMemoryState(): MapFogMemoryState {
     updatedAt: null,
     floors: {},
   };
-}
-
-function matrixAt(matrix: number[][] | null, x: number, y: number): number | null {
-  if (!matrix) return null;
-  const row = matrix[y];
-  if (!row) return null;
-  const value = row[x];
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return value;
 }
 
 function floorKeyOf(gameState: GameStateSnapshot) {
@@ -42,8 +34,7 @@ export function rememberVisibleFog(state: MapFogMemoryState, gameState: GameStat
 
   for (let y = 0; y < mapHeight; y += 1) {
     for (let x = 0; x < mapWidth; x += 1) {
-      const fogValue = matrixAt(gameState.fogMask, x, y);
-      if (fogValue === null || fogValue < 2) continue;
+      if (!isEffectivelyVisible(gameState, x, y)) continue;
 
       const key = coordinateKey(x, y);
       if (existing.has(key)) continue;

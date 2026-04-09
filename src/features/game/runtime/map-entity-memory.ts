@@ -1,4 +1,5 @@
 import type { GameStateSnapshot, MapEntitySnapshot } from "../game.types";
+import { isEffectivelyVisible } from "../game-visibility";
 
 export type RememberedEntityKind = "interactive" | "pickup" | "trap" | "arrow-trap" | "portal";
 
@@ -21,15 +22,6 @@ export interface MapEntityMemoryState {
   version: 1;
   updatedAt: string | null;
   floors: Record<string, Record<string, RememberedEntity>>;
-}
-
-function matrixAt(matrix: number[][] | null, x: number, y: number): number | null {
-  if (!matrix) return null;
-  const row = matrix[y];
-  if (!row) return null;
-  const value = row[x];
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return value;
 }
 
 function floorKeyOf(gameState: GameStateSnapshot) {
@@ -63,8 +55,7 @@ function rememberEntity(
 }
 
 function isVisible(gameState: GameStateSnapshot, x: number, y: number) {
-  const fogValue = matrixAt(gameState.fogMask, x, y);
-  return typeof fogValue === "number" && fogValue >= 2;
+  return isEffectivelyVisible(gameState, x, y);
 }
 
 export function createEmptyMapEntityMemoryState(): MapEntityMemoryState {

@@ -1,4 +1,5 @@
 import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
+import { effectiveFogValueAt } from "../game-visibility";
 import type { RememberedEntity } from "../runtime/map-entity-memory";
 import {
   findBreakableInteractiveAtPosition,
@@ -45,7 +46,7 @@ function matrixAt(matrix: number[][] | null, x: number, y: number): number | nul
 }
 
 export function fogStateAt(gameState: GameStateSnapshot, x: number, y: number): FogState {
-  const value = matrixAt(gameState.fogMask, x, y);
+  const value = effectiveFogValueAt(gameState, x, y);
   if (value === 1) return "explored";
   if (typeof value === "number" && value >= 2) return "visible";
   return "hidden";
