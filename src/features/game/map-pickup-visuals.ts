@@ -78,6 +78,13 @@ export interface PickupStackVisual {
   visual: PickupVisualDefinition;
 }
 
+function pickupCategoryPriority(category: PickupVisualCategory) {
+  if (category === "energy") return 0;
+  if (category === "amber" || category === "treasure") return 1;
+  if (category === "marble") return 2;
+  return 3;
+}
+
 export function buildPickupStacks(pickups: MapEntitySnapshot[]): PickupStackVisual[] {
   const grouped = new Map<string, PickupStackVisual>();
 
@@ -106,6 +113,11 @@ export function buildPickupStacks(pickups: MapEntitySnapshot[]): PickupStackVisu
   }
 
   return [...grouped.values()].sort((left, right) => {
+    const categoryDelta = pickupCategoryPriority(left.visual.category) - pickupCategoryPriority(right.visual.category);
+    if (categoryDelta !== 0) return categoryDelta;
+    if (left.totalValue !== null && right.totalValue !== null && left.totalValue !== right.totalValue) {
+      return right.totalValue - left.totalValue;
+    }
     if (left.count !== right.count) return right.count - left.count;
     return left.type.localeCompare(right.type);
   });

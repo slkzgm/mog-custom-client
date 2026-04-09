@@ -12,7 +12,7 @@ import {
 } from "../game-map";
 import { resolveEnemyVisual } from "../map-enemy-visuals";
 import { interactiveValueText, isRockInteractive, resolveInteractiveVisual } from "../map-interactive-visuals";
-import { pickupValueText, resolvePickupVisual } from "../map-pickup-visuals";
+import { buildPickupStacks, pickupValueText, resolvePickupVisual, type PickupStackVisual } from "../map-pickup-visuals";
 import type {
   CellEntity,
   CellStackEntry,
@@ -441,10 +441,13 @@ function labelInteractiveOccupant(entity: MapEntitySnapshot): CellStackEntry | n
   };
 }
 
-function labelPickupOccupant(entity: MapEntitySnapshot): CellStackEntry {
+function labelPickupStackOccupant(stack: PickupStackVisual): CellStackEntry {
+  const valueText = pickupValueText(stack.totalValue);
+  const countText = stack.count > 1 ? ` x${stack.count}` : "";
+
   return {
     kind: "pickup",
-    label: resolvePickupVisual(entity).label,
+    label: `${stack.visual.label}${valueText ? ` ${valueText}` : countText}`,
   };
 }
 
@@ -487,8 +490,8 @@ export function resolveCellOccupantsWithLookups(
     }
   }
 
-  for (const pickup of lookups.pickupGroupsByKey.get(key) ?? []) {
-    occupants.push(labelPickupOccupant(pickup));
+  for (const pickupStack of buildPickupStacks(lookups.pickupGroupsByKey.get(key) ?? [])) {
+    occupants.push(labelPickupStackOccupant(pickupStack));
   }
 
   for (const trap of lookups.trapGroupsByKey.get(key) ?? []) {
@@ -683,10 +686,11 @@ export function resolveEntityWithLookups(
     };
   }
 
-  const pickup = lookups.pickupByKey.get(key) ?? null;
-  if (pickup) {
-    const visual = resolvePickupVisual(pickup);
-    const valueText = pickupValueText(pickup.value);
+  const pickupStacks = buildPickupStacks(lookups.pickupGroupsByKey.get(key) ?? []);
+  const primaryPickupStack = pickupStacks[0] ?? null;
+  if (primaryPickupStack) {
+    const visual = primaryPickupStack.visual;
+    const valueText = pickupValueText(primaryPickupStack.totalValue);
 
     return {
       kind: "pickup",
