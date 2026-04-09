@@ -95,13 +95,15 @@ export function findEnemyAtPosition(
   targetX: number,
   targetY: number,
 ): EnemySnapshot | null {
-  for (const enemy of gameState.enemies) {
-    if (enemy.x === targetX && enemy.y === targetY) {
-      return enemy;
-    }
-  }
+  return selectPrimaryEnemy(getEnemiesAtPosition(gameState, targetX, targetY));
+}
 
-  return null;
+export function getEnemiesAtPosition(
+  gameState: GameStateSnapshot,
+  targetX: number,
+  targetY: number,
+): EnemySnapshot[] {
+  return gameState.enemies.filter((enemy) => enemy.x === targetX && enemy.y === targetY);
 }
 
 export function findPortalAtPosition(
@@ -137,6 +139,11 @@ export function isGhostEnemy(enemy: EnemySnapshot): boolean {
 
 export function isAttackableEnemy(enemy: EnemySnapshot): boolean {
   return !isGhostEnemy(enemy);
+}
+
+export function selectPrimaryEnemy(enemies: EnemySnapshot[]): EnemySnapshot | null {
+  if (enemies.length === 0) return null;
+  return enemies.find(isAttackableEnemy) ?? enemies[0] ?? null;
 }
 
 export function findBreakableInteractiveAtPosition(

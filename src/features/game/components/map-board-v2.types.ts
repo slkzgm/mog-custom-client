@@ -72,6 +72,12 @@ export interface CellActivation {
   direction?: MoveDirection;
 }
 
+export interface CellStackEntry {
+  kind: EntityKind;
+  label: string;
+  isAttackable?: boolean;
+}
+
 export interface MapBoardCellViewModel {
   key: string;
   x: number;
@@ -80,6 +86,8 @@ export interface MapBoardCellViewModel {
   tile: TileKind;
   entity: CellEntity | null;
   action: CellActivation | null;
+  occupants: CellStackEntry[];
+  stackBadgeText: string | null;
   className: string;
   title: string;
   shroomDanger: ShroomTargetTile | null;

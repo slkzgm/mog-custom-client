@@ -2648,6 +2648,25 @@ summary {
   bottom: var(--map2-badge-offset);
 }
 
+.map2-cell-stack-badge {
+  position: absolute;
+  top: var(--map2-badge-offset);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: var(--map2-badge-min-width);
+  padding: var(--map2-badge-padding-y) var(--map2-badge-padding-x);
+  border-radius: 999px;
+  background: rgba(32, 36, 44, 0.94);
+  border: 1px solid rgba(214, 226, 255, 0.24);
+  color: #f4f7ff;
+  font-size: var(--map2-badge-font-size);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  box-shadow: 0 calc(var(--map2-cell-size) * 0.08) calc(var(--map2-cell-size) * 0.18) rgba(0, 0, 0, 0.24);
+  z-index: 1;
+}
+
 .map2-token-badge-danger {
   background: rgba(111, 20, 20, 0.92);
   border-color: rgba(255, 183, 183, 0.34);

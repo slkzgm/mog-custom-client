@@ -63,6 +63,11 @@ export function MapBoardV2Grid({
                 </span>
               ))
             : null}
+          {cell.stackBadgeText && cell.fog !== "hidden" ? (
+            <span className="map2-cell-stack-badge" aria-label={`${cell.occupants.length} occupants on this tile`}>
+              {cell.stackBadgeText}
+            </span>
+          ) : null}
         </button>
       ))}
     </div>

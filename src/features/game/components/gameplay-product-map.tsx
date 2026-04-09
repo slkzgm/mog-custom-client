@@ -295,6 +295,22 @@ function ProductSelectedCellCard({
         </div>
       ) : null}
 
+      {selectedCell.occupants.length > 1 ? (
+        <div className="product-map-details-section">
+          <p className="product-map-details-title">Also On Tile</p>
+          <div className="product-map-details-badges">
+            {selectedCell.occupants.slice(1).map((occupant, index) => (
+              <span
+                key={`${occupant.kind}:${occupant.label}:${index}`}
+                className={`product-map-details-badge ${occupant.isAttackable === false ? "tone-warning" : ""}`}
+              >
+                {occupant.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {selectedCell.action ? (
         <button
           type="button"

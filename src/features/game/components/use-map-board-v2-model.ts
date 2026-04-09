@@ -32,6 +32,7 @@ import {
   rememberedEntityToCellEntity,
   resolveFocusWindow,
   resolveEntityWithLookups,
+  resolveCellOccupantsWithLookups,
   selectedEnemyIntent,
   tileKindAtWithLookups,
 } from "./map-board-v2.utils";
@@ -283,6 +284,7 @@ export function useMapBoardV2Model({
             ? String(latestPortalPrompt.teleportCost)
             : null;
         const entity = withPortalPromptBadge(rawEntity, portalCostText, isVisited);
+        const occupants = resolveCellOccupantsWithLookups(displayGameState, x, y, entityLookups);
         const hint = hintsByKey.get(key) ?? null;
         const isSelected = key === activeSelectedKey;
         const isPlayerTile = Boolean(displayGameState.player && displayGameState.player.x === x && displayGameState.player.y === y);
@@ -307,6 +309,8 @@ export function useMapBoardV2Model({
           tile,
           entity,
           action,
+          occupants,
+          stackBadgeText: occupants.length > 1 ? `+${occupants.length - 1}` : null,
           shroomDanger,
           className: [
             "map2-cell",
@@ -322,7 +326,7 @@ export function useMapBoardV2Model({
           ]
             .filter(Boolean)
             .join(" "),
-          title: `(${x},${y}) ${tile} ${entity?.label ?? ""}`.trim(),
+          title: `(${x},${y}) ${tile}${occupants.length > 0 ? ` • ${occupants.map((occupant) => occupant.label).join(", ")}` : ""}`.trim(),
         });
       }
     }

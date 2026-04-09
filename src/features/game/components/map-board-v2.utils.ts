@@ -4,6 +4,7 @@ import {
   findBreakableInteractiveAtPosition,
   findEnemyAtPosition,
   getMoveTarget,
+  selectPrimaryEnemy,
   isAttackableEnemy,
   isMoveTargetPassable,
   moveControlOrder,
@@ -13,6 +14,7 @@ import { interactiveValueText, isRockInteractive, resolveInteractiveVisual } fro
 import { pickupValueText, resolvePickupVisual } from "../map-pickup-visuals";
 import type {
   CellEntity,
+  CellStackEntry,
   CellHint,
   FocusOffset,
   FocusViewportSize,
@@ -64,22 +66,37 @@ export function tileKindAt(gameState: GameStateSnapshot, x: number, y: number): 
 }
 
 export interface EntityPositionLookups {
+  enemyGroupsByKey: Map<string, EnemySnapshot[]>;
   enemyByKey: Map<string, EnemySnapshot>;
+  interactiveGroupsByKey: Map<string, MapEntitySnapshot[]>;
   interactiveByKey: Map<string, MapEntitySnapshot>;
+  pickupGroupsByKey: Map<string, MapEntitySnapshot[]>;
   pickupByKey: Map<string, MapEntitySnapshot>;
+  trapGroupsByKey: Map<string, MapEntitySnapshot[]>;
   trapByKey: Map<string, MapEntitySnapshot>;
+  arrowTrapGroupsByKey: Map<string, MapEntitySnapshot[]>;
   arrowTrapByKey: Map<string, MapEntitySnapshot>;
+  portalGroupsByKey: Map<string, MapEntitySnapshot[]>;
   portalByKey: Map<string, MapEntitySnapshot>;
   rockKeys: Set<string>;
 }
 
 export function buildEntityPositionLookups(gameState: GameStateSnapshot): EntityPositionLookups {
-  const enemyByKey = toLookup(gameState.enemies);
-  const interactiveByKey = toLookup(gameState.interactive);
-  const pickupByKey = toLookup(gameState.pickups);
-  const trapByKey = toLookup(gameState.traps);
-  const arrowTrapByKey = toLookup(gameState.arrowTraps);
-  const portalByKey = toLookup(gameState.portals);
+  const enemyGroupsByKey = toGroupedLookup(gameState.enemies);
+  const enemyByKey = toPrimaryLookup(enemyGroupsByKey, selectPrimaryEnemy);
+  const interactiveGroupsByKey = toGroupedLookup(gameState.interactive);
+  const interactiveByKey = toPrimaryLookup(
+    interactiveGroupsByKey,
+    (items) => items.find((item) => !isRockInteractive(item)) ?? null,
+  );
+  const pickupGroupsByKey = toGroupedLookup(gameState.pickups);
+  const pickupByKey = toPrimaryLookup(pickupGroupsByKey, (items) => items[0] ?? null);
+  const trapGroupsByKey = toGroupedLookup(gameState.traps);
+  const trapByKey = toPrimaryLookup(trapGroupsByKey, (items) => items[0] ?? null);
+  const arrowTrapGroupsByKey = toGroupedLookup(gameState.arrowTraps);
+  const arrowTrapByKey = toPrimaryLookup(arrowTrapGroupsByKey, (items) => items[0] ?? null);
+  const portalGroupsByKey = toGroupedLookup(gameState.portals);
+  const portalByKey = toPrimaryLookup(portalGroupsByKey, (items) => items[0] ?? null);
   const rockKeys = new Set<string>();
 
   for (const interactive of gameState.interactive) {
@@ -95,11 +112,17 @@ export function buildEntityPositionLookups(gameState: GameStateSnapshot): Entity
   }
 
   return {
+    enemyGroupsByKey,
     enemyByKey,
+    interactiveGroupsByKey,
     interactiveByKey,
+    pickupGroupsByKey,
     pickupByKey,
+    trapGroupsByKey,
     trapByKey,
+    arrowTrapGroupsByKey,
     arrowTrapByKey,
+    portalGroupsByKey,
     portalByKey,
     rockKeys,
   };
@@ -365,6 +388,133 @@ export function toLookup<T extends { x: number; y: number }>(items: T[]) {
   }
 
   return lookup;
+}
+
+export function toGroupedLookup<T extends { x: number; y: number }>(items: T[]) {
+  const lookup = new Map<string, T[]>();
+
+  for (const item of items) {
+    const key = keyOf(item.x, item.y);
+    const current = lookup.get(key);
+    if (current) {
+      current.push(item);
+      continue;
+    }
+    lookup.set(key, [item]);
+  }
+
+  return lookup;
+}
+
+function toPrimaryLookup<T extends { x: number; y: number }>(
+  groups: Map<string, T[]>,
+  pickPrimary: (items: T[]) => T | null,
+) {
+  const lookup = new Map<string, T>();
+
+  for (const [key, items] of groups) {
+    const primary = pickPrimary(items);
+    if (primary) {
+      lookup.set(key, primary);
+    }
+  }
+
+  return lookup;
+}
+
+function labelEnemyOccupant(enemy: EnemySnapshot): CellStackEntry {
+  const visual = resolveEnemyVisual(enemy);
+  return {
+    kind: "enemy",
+    label: visual.label,
+    isAttackable: isAttackableEnemy(enemy),
+  };
+}
+
+function labelInteractiveOccupant(entity: MapEntitySnapshot): CellStackEntry | null {
+  if (isRockInteractive(entity)) return null;
+  if (entity.type.trim().toLowerCase() === "portal") return null;
+  return {
+    kind: "interactive",
+    label: resolveInteractiveVisual(entity).label,
+  };
+}
+
+function labelPickupOccupant(entity: MapEntitySnapshot): CellStackEntry {
+  return {
+    kind: "pickup",
+    label: resolvePickupVisual(entity).label,
+  };
+}
+
+function labelMapEntityOccupant(kind: "trap" | "arrow-trap" | "portal", entity: MapEntitySnapshot): CellStackEntry {
+  return {
+    kind,
+    label: kind === "portal" ? entity.type : entity.type,
+  };
+}
+
+function sortEnemyStack(enemies: EnemySnapshot[]) {
+  return [...enemies].sort((left, right) => {
+    const leftScore = isAttackableEnemy(left) ? 1 : 0;
+    const rightScore = isAttackableEnemy(right) ? 1 : 0;
+    return rightScore - leftScore;
+  });
+}
+
+export function resolveCellOccupantsWithLookups(
+  gameState: GameStateSnapshot,
+  x: number,
+  y: number,
+  lookups: EntityPositionLookups,
+): CellStackEntry[] {
+  const key = keyOf(x, y);
+  const occupants: CellStackEntry[] = [];
+
+  if (gameState.player && gameState.player.x === x && gameState.player.y === y) {
+    occupants.push({ kind: "player", label: "Player" });
+  }
+
+  for (const enemy of sortEnemyStack(lookups.enemyGroupsByKey.get(key) ?? [])) {
+    occupants.push(labelEnemyOccupant(enemy));
+  }
+
+  for (const interactive of lookups.interactiveGroupsByKey.get(key) ?? []) {
+    const occupant = labelInteractiveOccupant(interactive);
+    if (occupant) {
+      occupants.push(occupant);
+    }
+  }
+
+  for (const pickup of lookups.pickupGroupsByKey.get(key) ?? []) {
+    occupants.push(labelPickupOccupant(pickup));
+  }
+
+  for (const trap of lookups.trapGroupsByKey.get(key) ?? []) {
+    occupants.push(labelMapEntityOccupant("trap", trap));
+  }
+
+  for (const arrowTrap of lookups.arrowTrapGroupsByKey.get(key) ?? []) {
+    occupants.push(labelMapEntityOccupant("arrow-trap", arrowTrap));
+  }
+
+  for (const portal of lookups.portalGroupsByKey.get(key) ?? []) {
+    occupants.push(labelMapEntityOccupant("portal", portal));
+  }
+
+  if (occupants.some((occupant) => occupant.kind === "portal")) {
+    return occupants;
+  }
+
+  for (const interactive of lookups.interactiveGroupsByKey.get(key) ?? []) {
+    if (interactive.type.trim().toLowerCase() !== "portal") continue;
+    occupants.push({
+      kind: "portal",
+      label: interactive.type,
+    });
+  }
+
+  return occupants;
 }
 
 export function rememberedEntityToCellEntity(entity: RememberedEntity): CellEntity | null {
