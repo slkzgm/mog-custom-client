@@ -315,6 +315,9 @@ function ProductMapToolbar({
   model: GameplayProductScreenModel;
   mapModel: ReturnType<typeof useMapBoardV2Model>;
 }) {
+  const portalValidation = model.gameplay.controls.validateUsePortal();
+  const canUsePortal = !portalValidation;
+
   return (
     <div className="product-map-toolbar">
       <div className="product-map-toolbar-group">
@@ -375,6 +378,20 @@ function ProductMapToolbar({
       ) : null}
 
       <div className="product-map-toolbar-group product-map-toolbar-group-spacer" />
+
+      {canUsePortal ? (
+        <div className="product-map-toolbar-group">
+          <button
+            type="button"
+            className="product-map-toolbar-button is-active"
+            onClick={() => void model.gameplay.controls.handleUsePortal()}
+            disabled={model.gameplay.isActionLocked || model.gameplay.controls.runTeleportMutation.isPending}
+            title="Use portal (T)"
+          >
+            Teleport (T)
+          </button>
+        </div>
+      ) : null}
 
       <div className="product-map-toolbar-group">
         <span className="product-map-toolbar-meta">Movement</span>
@@ -531,10 +548,10 @@ function ProductMobileControls({ model }: GameplayProductMapProps) {
           className="product-mobile-control product-mobile-control-primary is-primary"
           onClick={() => void (canUsePortal ? controls.handleUsePortal() : controls.handlePass())}
           disabled={canUsePortal ? isPortalDisabled : isPassDisabled}
-          title={canUsePortal ? "Use portal" : "Pass turn"}
+          title={canUsePortal ? "Use portal (T)" : "Pass turn"}
         >
           <span className="product-mobile-control-label">{canUsePortal ? "Portal" : "Pass"}</span>
-          <span className="product-mobile-control-copy">{canUsePortal ? "Teleport" : "Skip turn"}</span>
+          <span className="product-mobile-control-copy">{canUsePortal ? "Teleport • T" : "Skip turn"}</span>
         </button>
 
         {canUsePortal ? (
@@ -874,6 +891,7 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
       mapModel.panFocus(2, 0);
     },
     onPass: model.gameplay.controls.handlePass,
+    onUsePortal: model.gameplay.controls.handleUsePortal,
     pendingUpgradeOptions: model.gameplay.upgrades.pendingUpgradeOptions,
     onRerollUpgrades: model.gameplay.upgrades.handleRerollUpgrades,
     onSelectUpgrade: model.gameplay.upgrades.handleSelectUpgrade,

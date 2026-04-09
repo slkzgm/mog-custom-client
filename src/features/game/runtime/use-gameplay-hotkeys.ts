@@ -9,6 +9,7 @@ interface UseGameplayHotkeysParams {
   onMove: (direction: MoveDirection) => void | Promise<void>;
   onPanCamera?: (direction: MoveDirection) => void;
   onPass: () => void | Promise<void>;
+  onUsePortal?: () => void | Promise<void>;
   pendingUpgradeOptions?: string[];
   onRerollUpgrades?: () => void | Promise<void>;
   onSelectUpgrade?: (upgradeId: string) => void | Promise<void>;
@@ -20,6 +21,7 @@ export function useGameplayHotkeys({
   onMove,
   onPanCamera,
   onPass,
+  onUsePortal,
   pendingUpgradeOptions = [],
   onRerollUpgrades,
   onSelectUpgrade,
@@ -51,6 +53,12 @@ export function useGameplayHotkeys({
     }
 
     if (disabled) return;
+
+    if (normalizedKey === "t") {
+      event.preventDefault();
+      void onUsePortal?.();
+      return;
+    }
 
     if (event.code === "Space" || normalizedKey === " ") {
       event.preventDefault();
