@@ -407,10 +407,7 @@ export function useMapBoardV2Model({
   }, []);
 
   const handleActivateCell = useCallback((cell: MapBoardCellViewModel) => {
-    if (selectedKey !== cell.key) {
-      setSelectedKey(cell.key);
-      return;
-    }
+    setSelectedKey(cell.key);
 
     if (cell.action?.kind === "portal") {
       void onPortalAction?.();
@@ -425,7 +422,7 @@ export function useMapBoardV2Model({
     if (cell.action?.kind === "direction" && cell.action.direction) {
       void onDirectionalAction?.(cell.action.direction);
     }
-  }, [onDirectionalAction, onPassAction, onPortalAction, selectedKey]);
+  }, [onDirectionalAction, onPassAction, onPortalAction]);
 
   return {
     cells,

@@ -35,6 +35,7 @@ const PRODUCT_MAP_CELL_SIZE_MIN = 16;
 const PRODUCT_MAP_CELL_SIZE_MAX = 96;
 const PRODUCT_MAP_MIN_INNER_WIDTH = 320;
 const PRODUCT_MAP_MIN_INNER_HEIGHT = 260;
+const PRODUCT_MAP_INSPECT_HOLD_MS = 420;
 
 type ProductMapHudDensity = "comfortable" | "compact" | "minimal" | "stacked";
 
@@ -387,7 +388,7 @@ function ProductMapToolbar({
 
           <div className="product-map-toolbar-group">
             <span className="product-map-toolbar-meta">
-              Click once to inspect • Click again to act • Drag to pan • Wheel to zoom • Arrows move camera
+              Left click acts • Right click inspects • Hold to inspect on touch • Drag to pan • Wheel to zoom
             </span>
           </div>
         </>
@@ -706,6 +707,8 @@ function ProductMapViewport({
     startOffsetX: number;
     startOffsetY: number;
   } | null>(null);
+  const longPressTimeoutRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const pressedCellKeyRef = useRef<string | null>(null);
   const suppressClickRef = useRef(false);
   const cellsByKey = useMemo(() => new Map(mapModel.cells.map((cell) => [cell.key, cell])), [mapModel.cells]);
@@ -738,6 +741,12 @@ function ProductMapViewport({
     setIsDragging(false);
   }
 
+  function clearLongPressTimeout() {
+    if (longPressTimeoutRef.current === null) return;
+    window.clearTimeout(longPressTimeoutRef.current);
+    longPressTimeoutRef.current = null;
+  }
+
   function resolvePressedCellKey(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return null;
     return target.closest<HTMLElement>("[data-cell-key]")?.dataset.cellKey ?? null;
@@ -747,7 +756,9 @@ function ProductMapViewport({
     if (mapModel.viewMode !== "focus") return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
-    pressedCellKeyRef.current = resolvePressedCellKey(event.target);
+    clearLongPressTimeout();
+    const pressedCellKey = resolvePressedCellKey(event.target);
+    pressedCellKeyRef.current = pressedCellKey;
     dragStateRef.current = {
       pointerId: event.pointerId,
       originX: event.clientX,
@@ -756,8 +767,17 @@ function ProductMapViewport({
       startOffsetY: mapModel.focusOffset.y,
     };
     suppressClickRef.current = false;
+    longPressTriggeredRef.current = false;
     setIsDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
+
+    if (event.pointerType !== "mouse" && pressedCellKey) {
+      longPressTimeoutRef.current = window.setTimeout(() => {
+        longPressTriggeredRef.current = true;
+        suppressClickRef.current = true;
+        mapModel.handleSelectCell(pressedCellKey);
+      }, PRODUCT_MAP_INSPECT_HOLD_MS);
+    }
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
@@ -769,6 +789,7 @@ function ProductMapViewport({
 
     if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
       suppressClickRef.current = true;
+      clearLongPressTimeout();
     }
 
     mapModel.setFocusOffset(
@@ -782,21 +803,26 @@ function ProductMapViewport({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    const shouldActivatePressedCell = !suppressClickRef.current ? pressedCellKeyRef.current : null;
+    clearLongPressTimeout();
+    const shouldActivatePressedCell = !suppressClickRef.current && !longPressTriggeredRef.current ? pressedCellKeyRef.current : null;
     stopDragging();
     pressedCellKeyRef.current = null;
+    longPressTriggeredRef.current = false;
 
     if (!shouldActivatePressedCell) return;
 
     const pressedCell = cellsByKey.get(shouldActivatePressedCell);
     if (!pressedCell) return;
 
+    suppressClickRef.current = true;
     mapModel.handleActivateCell(pressedCell);
   }
 
   function handlePointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
     if (dragStateRef.current?.pointerId !== event.pointerId) return;
+    clearLongPressTimeout();
     pressedCellKeyRef.current = null;
+    longPressTriggeredRef.current = false;
     stopDragging();
   }
 
