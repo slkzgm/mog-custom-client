@@ -5,10 +5,8 @@ import { GameplayProductMap } from "./gameplay-product-map";
 import { getRunModeDefinition } from "../game-modes";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 
-function formatUpgradesPerFloor(upgradesPerFloor: Record<string, string>) {
-  const entries = Object.entries(upgradesPerFloor).sort(([leftFloor], [rightFloor]) => Number(leftFloor) - Number(rightFloor));
-  if (entries.length === 0) return "None";
-  return entries.map(([floor, upgrade]) => `F${floor}: ${upgrade}`).join(" • ");
+function getUpgradeFloorEntries(upgradesPerFloor: Record<string, string>) {
+  return Object.entries(upgradesPerFloor).sort(([leftFloor], [rightFloor]) => Number(leftFloor) - Number(rightFloor));
 }
 
 function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductScreenModel> }) {
@@ -103,6 +101,7 @@ function CompletedRunRecapModal({ model }: { model: ReturnType<typeof useGamepla
   if (!recap) return null;
 
   const mode = getRunModeDefinition(recap.runType ?? "NORMAL");
+  const upgradeFloorEntries = getUpgradeFloorEntries(recap.upgradesPerFloor);
 
   return (
     <div className="product-run-recap-backdrop" role="presentation" onClick={model.dismissCompletedRunRecap}>
@@ -113,7 +112,6 @@ function CompletedRunRecapModal({ model }: { model: ReturnType<typeof useGamepla
         aria-labelledby="product-run-recap-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <span className="product-card-label">Run Recap</span>
         <h2 id="product-run-recap-title">{recap.outcome === "victory" ? "Run Cleared" : "Run Ended"}</h2>
         <p>
           {mode.label} finished on floor {recap.currentFloor ?? "-"} at turn {recap.turnNumber ?? "-"}.
@@ -144,13 +142,20 @@ function CompletedRunRecapModal({ model }: { model: ReturnType<typeof useGamepla
             <strong>{recap.rerollCount ?? 0}</strong>
           </div>
         </div>
-        <p className="product-card-note">
-          {mode.rewardLabel} and marbles shown here are the final totals returned by the completed run, with {recap.keysUsed ?? "-"} key(s)
-          used.
-        </p>
         <div className="product-map-details-section">
           <p className="product-map-details-title">Upgrades By Floor</p>
-          <p>{formatUpgradesPerFloor(recap.upgradesPerFloor)}</p>
+          <div className="product-upgrade-sheet-active-list product-run-recap-upgrade-list">
+            {upgradeFloorEntries.length > 0 ? (
+              upgradeFloorEntries.map(([floor, upgrade]) => (
+                <span key={`${floor}:${upgrade}`} className="product-upgrade-sheet-active-pill product-run-recap-upgrade-pill">
+                  <span className="product-run-recap-upgrade-floor">F{floor}</span>
+                  <strong className="product-run-recap-upgrade-name">{upgrade}</strong>
+                </span>
+              ))
+            ) : (
+              <span className="product-upgrade-sheet-active-pill is-empty">No upgrades recorded</span>
+            )}
+          </div>
         </div>
         <div className="product-card-actions">
           <button type="button" className="product-button product-button-primary" onClick={model.dismissCompletedRunRecap}>
