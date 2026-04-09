@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { getRunModeRewardValue } from "../game-modes";
 import type { GameStateSnapshot, RunType } from "../game.types";
 
 const STORAGE_KEY = "mog.completed-run-history.v1";
@@ -15,10 +16,11 @@ export interface CompletedRunSummary {
   keysUsed: number | null;
   energy: number | null;
   maxEnergy: number | null;
-  treasure: number | null;
+  rewardValue: number | null;
   marbles: number | null;
-  amber: number | null;
-  upgradesCount: number;
+  skDefeated: boolean;
+  rerollCount: number | null;
+  upgradesPerFloor: Record<string, string>;
 }
 
 function sanitizeCompletedRunSummary(value: unknown): CompletedRunSummary | null {
@@ -35,10 +37,18 @@ function sanitizeCompletedRunSummary(value: unknown): CompletedRunSummary | null
     keysUsed: typeof candidate.keysUsed === "number" ? candidate.keysUsed : null,
     energy: typeof candidate.energy === "number" ? candidate.energy : null,
     maxEnergy: typeof candidate.maxEnergy === "number" ? candidate.maxEnergy : null,
-    treasure: typeof candidate.treasure === "number" ? candidate.treasure : null,
+    rewardValue: typeof candidate.rewardValue === "number" ? candidate.rewardValue : null,
     marbles: typeof candidate.marbles === "number" ? candidate.marbles : null,
-    amber: typeof candidate.amber === "number" ? candidate.amber : null,
-    upgradesCount: typeof candidate.upgradesCount === "number" ? candidate.upgradesCount : 0,
+    skDefeated: candidate.skDefeated === true,
+    rerollCount: typeof candidate.rerollCount === "number" ? candidate.rerollCount : null,
+    upgradesPerFloor:
+      candidate.upgradesPerFloor && typeof candidate.upgradesPerFloor === "object"
+        ? Object.fromEntries(
+            Object.entries(candidate.upgradesPerFloor).filter(
+              (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string",
+            ),
+          )
+        : {},
   };
 }
 
@@ -72,10 +82,11 @@ export function createCompletedRunSummary(gameState: GameStateSnapshot): Complet
     keysUsed: gameState.keysUsed,
     energy: player?.energy ?? null,
     maxEnergy: player?.maxEnergy ?? null,
-    treasure: player?.treasure ?? null,
+    rewardValue: getRunModeRewardValue(gameState.runType ?? "NORMAL", player),
     marbles: player?.marbles ?? null,
-    amber: player?.amber ?? null,
-    upgradesCount: player?.upgrades.length ?? 0,
+    skDefeated: gameState.skDefeated === true,
+    rerollCount: gameState.currentRerollCount,
+    upgradesPerFloor: gameState.upgradesPerFloor,
   };
 }
 

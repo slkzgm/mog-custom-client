@@ -3,6 +3,12 @@ import { getRunModeDefinition } from "../game-modes";
 import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 
+function formatUpgradesPerFloor(upgradesPerFloor: Record<string, string>) {
+  const entries = Object.entries(upgradesPerFloor).sort(([leftFloor], [rightFloor]) => Number(leftFloor) - Number(rightFloor));
+  if (entries.length === 0) return "No upgrades recorded";
+  return entries.map(([floor, upgrade]) => `F${floor}: ${upgrade}`).join(" • ");
+}
+
 interface GameplayProductLobbyProps {
   model: GameplayProductScreenModel;
 }
@@ -247,6 +253,22 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
               </div>
               <div className="product-history-entry-grid">
                 <div>
+                  <span>{mode.rewardLabel}</span>
+                  <strong>{entry.rewardValue ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Marbles</span>
+                  <strong>{entry.marbles ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Keys</span>
+                  <strong>{entry.keysUsed ?? "-"}</strong>
+                </div>
+                <div>
+                  <span>Skeleton King</span>
+                  <strong>{entry.skDefeated ? "Killed" : "Alive"}</strong>
+                </div>
+                <div>
                   <span>Floor</span>
                   <strong>{entry.currentFloor ?? "-"}</strong>
                 </div>
@@ -255,14 +277,15 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
                   <strong>{entry.turnNumber ?? "-"}</strong>
                 </div>
                 <div>
+                  <span>Rerolls</span>
+                  <strong>{entry.rerollCount ?? 0}</strong>
+                </div>
+                <div>
                   <span>Energy</span>
                   <strong>{formatCurrentMaxValue(entry.energy, entry.maxEnergy)}</strong>
                 </div>
-                <div>
-                  <span>Upgrades</span>
-                  <strong>{entry.upgradesCount}</strong>
-                </div>
               </div>
+              <p className="product-card-note">{formatUpgradesPerFloor(entry.upgradesPerFloor)}</p>
             </article>
           );
         })}

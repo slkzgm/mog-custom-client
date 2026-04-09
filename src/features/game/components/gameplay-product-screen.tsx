@@ -5,6 +5,12 @@ import { GameplayProductMap } from "./gameplay-product-map";
 import { getRunModeDefinition } from "../game-modes";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 
+function formatUpgradesPerFloor(upgradesPerFloor: Record<string, string>) {
+  const entries = Object.entries(upgradesPerFloor).sort(([leftFloor], [rightFloor]) => Number(leftFloor) - Number(rightFloor));
+  if (entries.length === 0) return "None";
+  return entries.map(([floor, upgrade]) => `F${floor}: ${upgrade}`).join(" • ");
+}
+
 function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductScreenModel> }) {
   const player = model.gameplay.runState?.player;
   const profileName = model.auth.profileQuery.data?.profileName ?? "Operator";
@@ -114,21 +120,37 @@ function CompletedRunRecapModal({ model }: { model: ReturnType<typeof useGamepla
         </p>
         <div className="product-history-entry-grid">
           <div>
-            <span>Energy</span>
-            <strong>{formatCurrentMaxValue(recap.energy, recap.maxEnergy)}</strong>
-          </div>
-          <div>
-            <span>Treasure</span>
-            <strong>{recap.treasure ?? "-"}</strong>
+            <span>{mode.rewardLabel}</span>
+            <strong>{recap.rewardValue ?? "-"}</strong>
           </div>
           <div>
             <span>Marbles</span>
             <strong>{recap.marbles ?? "-"}</strong>
           </div>
           <div>
-            <span>Upgrades</span>
-            <strong>{recap.upgradesCount}</strong>
+            <span>Keys Used</span>
+            <strong>{recap.keysUsed ?? "-"}</strong>
           </div>
+          <div>
+            <span>Energy</span>
+            <strong>{formatCurrentMaxValue(recap.energy, recap.maxEnergy)}</strong>
+          </div>
+          <div>
+            <span>Skeleton King</span>
+            <strong>{recap.skDefeated ? "Killed" : "Alive"}</strong>
+          </div>
+          <div>
+            <span>Rerolls</span>
+            <strong>{recap.rerollCount ?? 0}</strong>
+          </div>
+        </div>
+        <p className="product-card-note">
+          {mode.rewardLabel} and marbles shown here are the final totals returned by the completed run, with {recap.keysUsed ?? "-"} key(s)
+          used.
+        </p>
+        <div className="product-map-details-section">
+          <p className="product-map-details-title">Upgrades By Floor</p>
+          <p>{formatUpgradesPerFloor(recap.upgradesPerFloor)}</p>
         </div>
         <div className="product-card-actions">
           <button type="button" className="product-button product-button-primary" onClick={model.dismissCompletedRunRecap}>
