@@ -281,14 +281,8 @@ export function buildViewport(
   const visibleHeight = Math.min(focusWindow.rows, mapHeight);
   const radiusX = Math.floor((visibleWidth - 1) / 2);
   const radiusY = Math.floor((visibleHeight - 1) / 2);
-  const centerX =
-    visibleWidth >= mapWidth
-      ? Math.floor((mapWidth - 1) / 2)
-      : clamp(gameState.player.x + focusOffset.x, radiusX, mapWidth - 1 - radiusX);
-  const centerY =
-    visibleHeight >= mapHeight
-      ? Math.floor((mapHeight - 1) / 2)
-      : clamp(gameState.player.y + focusOffset.y, radiusY, mapHeight - 1 - radiusY);
+  const centerX = gameState.player.x + focusOffset.x;
+  const centerY = gameState.player.y + focusOffset.y;
 
   return {
     minX: visibleWidth >= mapWidth ? 0 : centerX - radiusX,
@@ -314,14 +308,12 @@ export function getFocusOffsetBounds(gameState: GameStateSnapshot, focusWindow: 
 
   const visibleWidth = Math.min(focusWindow.columns, mapWidth);
   const visibleHeight = Math.min(focusWindow.rows, mapHeight);
-  const radiusX = Math.floor((visibleWidth - 1) / 2);
-  const radiusY = Math.floor((visibleHeight - 1) / 2);
 
   return {
-    minX: visibleWidth >= mapWidth ? 0 : radiusX - player.x,
-    maxX: visibleWidth >= mapWidth ? 0 : mapWidth - 1 - radiusX - player.x,
-    minY: visibleHeight >= mapHeight ? 0 : radiusY - player.y,
-    maxY: visibleHeight >= mapHeight ? 0 : mapHeight - 1 - radiusY - player.y,
+    minX: visibleWidth >= mapWidth ? 0 : -player.x,
+    maxX: visibleWidth >= mapWidth ? 0 : mapWidth - 1 - player.x,
+    minY: visibleHeight >= mapHeight ? 0 : -player.y,
+    maxY: visibleHeight >= mapHeight ? 0 : mapHeight - 1 - player.y,
   };
 }
 
