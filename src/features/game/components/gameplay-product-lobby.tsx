@@ -305,7 +305,6 @@ function RunHistoryPanel({ model }: GameplayProductLobbyProps) {
           Clear
         </button>
       </div>
-      <h2>Runs</h2>
 
       <div className="product-history-filter" role="tablist" aria-label="History filter">
         {[
