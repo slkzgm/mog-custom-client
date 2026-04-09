@@ -276,6 +276,7 @@ export function useMapBoardV2Model({
         const currentEntity = resolveEntityWithLookups(displayGameState, x, y, entityLookups);
         const rememberedEntity = entityMemory.rememberedEntities.get(key);
         const isVisited = visitedCells.visitedCoordinates.has(key);
+        const isStartCell = visitedCells.startCoordinate === key;
         const shroomDanger = shroomDangerTiles.get(key) ?? null;
         const rawEntity =
           currentEntity ?? (rememberedEntity && currentFog !== "visible" ? rememberedEntityToCellEntity(rememberedEntity) : null);
@@ -317,6 +318,7 @@ export function useMapBoardV2Model({
             `map2-cell-${entity?.useWallSurface ? "wall" : tile}`,
             `map2-fog-${fog}`,
             isVisited ? "map2-cell-visited" : "",
+            isStartCell ? "map2-cell-start" : "",
             shroomDanger ? "map2-cell-shroom-danger" : "",
             shroomDanger?.isMaxRange ? "map2-cell-shroom-max-range" : "",
             entity?.isPortalPromptActive ? "map2-cell-portal-prompt" : "",

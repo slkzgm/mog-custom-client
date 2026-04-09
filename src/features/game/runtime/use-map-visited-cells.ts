@@ -3,6 +3,7 @@ import { useEffect, useMemo, useReducer } from "react";
 import type { GameStateSnapshot } from "../game.types";
 import {
   createEmptyMapVisitedCellsState,
+  getStartCoordinateForFloor,
   getVisitedCoordinatesForFloor,
   getVisitedFloorKey,
   rememberVisitedCell,
@@ -37,7 +38,7 @@ function visitedCellsReducer(state: ReturnType<typeof createEmptyMapVisitedCells
     const nextFloors = { ...state.floors };
     delete nextFloors[action.floorKey];
     return {
-      version: 1 as const,
+      version: 2 as const,
       updatedAt: new Date().toISOString(),
       floors: nextFloors,
     };
@@ -78,6 +79,10 @@ export function useMapVisitedCells(gameState: GameStateSnapshot | null, enabled:
     () => getVisitedCoordinatesForFloor(visitedCellsState, gameState),
     [gameState, visitedCellsState],
   );
+  const startCoordinate = useMemo(
+    () => getStartCoordinateForFloor(visitedCellsState, gameState),
+    [gameState, visitedCellsState],
+  );
   const currentFloorKey = useMemo(() => getVisitedFloorKey(gameState), [gameState]);
 
   const resetCurrentFloor = useMemo(
@@ -106,6 +111,7 @@ export function useMapVisitedCells(gameState: GameStateSnapshot | null, enabled:
   if (!enabled) {
     return {
       visitedCoordinates: new Set<string>(),
+      startCoordinate: null,
       visitedCount: 0,
       visitedFloorCount: 0,
       resetCurrentFloor,
@@ -115,6 +121,7 @@ export function useMapVisitedCells(gameState: GameStateSnapshot | null, enabled:
 
   return {
     visitedCoordinates,
+    startCoordinate,
     visitedCount: visitedCoordinates.size,
     visitedFloorCount: Object.keys(visitedCellsState.floors).length,
     resetCurrentFloor,

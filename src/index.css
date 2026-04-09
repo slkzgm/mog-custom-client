@@ -2525,6 +2525,21 @@ summary {
   box-shadow: 0 0 0 1px rgba(30, 66, 38, 0.28);
 }
 
+.map2-cell-start .map2-cell-base::before {
+  inset: 0;
+  background: rgba(88, 138, 198, 0.2);
+}
+
+.map2-cell-start .map2-cell-base::after {
+  top: var(--map2-inset-sm);
+  right: var(--map2-inset-sm);
+  width: var(--map2-dot-size);
+  height: var(--map2-dot-size);
+  border-radius: 999px;
+  background: rgba(214, 236, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(36, 72, 112, 0.34);
+}
+
 .map2-cell-portal-prompt .map2-cell-base::before {
   inset: 0;
   background: rgba(118, 214, 255, 0.12);
