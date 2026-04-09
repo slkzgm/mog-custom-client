@@ -5,6 +5,7 @@ import {
   findBreakableInteractiveAtPosition,
   findEnemyAtPosition,
   getMoveTarget,
+  isGhostEnemy,
   selectPrimaryEnemy,
   isAttackableEnemy,
   isMoveTargetPassable,
@@ -460,10 +461,19 @@ function labelMapEntityOccupant(kind: "trap" | "arrow-trap" | "portal", entity: 
 
 function sortEnemyStack(enemies: EnemySnapshot[]) {
   return [...enemies].sort((left, right) => {
-    const leftScore = isAttackableEnemy(left) ? 1 : 0;
-    const rightScore = isAttackableEnemy(right) ? 1 : 0;
+    const leftScore = isGhostEnemy(left) ? 1 : 0;
+    const rightScore = isGhostEnemy(right) ? 1 : 0;
     return rightScore - leftScore;
   });
+}
+
+function selectVisibleEnemy(enemies: EnemySnapshot[]) {
+  if (enemies.length === 0) return null;
+  return enemies.find(isGhostEnemy) ?? enemies.find(isAttackableEnemy) ?? enemies[0] ?? null;
+}
+
+function sumEnemyDamage(enemies: EnemySnapshot[]) {
+  return enemies.reduce((total, enemy) => total + (typeof enemy.damage === "number" && Number.isFinite(enemy.damage) ? enemy.damage : 0), 0);
 }
 
 export function resolveCellOccupantsWithLookups(
@@ -634,7 +644,8 @@ export function resolveEntityWithLookups(
   }
 
   const key = keyOf(x, y);
-  const enemy = lookups.enemyByKey.get(key) ?? null;
+  const enemyStack = lookups.enemyGroupsByKey.get(key) ?? [];
+  const enemy = selectVisibleEnemy(enemyStack);
   if (enemy) {
     const hpRatio =
       enemy.hp !== null && enemy.maxHp !== null && enemy.maxHp > 0 ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHp)) : null;
@@ -642,6 +653,24 @@ export function resolveEntityWithLookups(
     const visual = resolveEnemyVisual(enemy, {
       intentArrow: nextMoveDirection ? intentArrow(nextMoveDirection) : null,
     });
+    const totalDamage = sumEnemyDamage(enemyStack);
+    const badges = visual.badges.map((badge) =>
+      badge.position === "se" && enemyStack.length > 1
+        ? {
+            ...badge,
+            text: String(totalDamage),
+            tone: totalDamage > 0 ? "danger" : badge.tone,
+          }
+        : badge,
+    );
+
+    if (enemyStack.length > 1 && !badges.some((badge) => badge.position === "se")) {
+      badges.push({
+        position: "se",
+        text: String(totalDamage),
+        tone: totalDamage > 0 ? "danger" : "ghost",
+      });
+    }
 
     return {
       kind: "enemy",
@@ -651,7 +680,7 @@ export function resolveEntityWithLookups(
       hpRatio,
       showToken: true,
       useWallSurface: false,
-      badges: visual.badges,
+      badges,
       isPortalPromptActive: false,
     };
   }
