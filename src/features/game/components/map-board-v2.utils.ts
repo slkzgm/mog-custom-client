@@ -230,22 +230,265 @@ function patternDirectionDelta(direction: "horizontal" | "vertical", isPositive:
   return { dx: 0, dy: isPositive ? 1 : -1 };
 }
 
-function canEnemyTraverseTile(gameState: GameStateSnapshot, x: number, y: number, canPassThroughWalls: boolean | null) {
-  const tile = tileKindAt(gameState, x, y);
-  if (tile === "void" || tile === "unknown") return false;
-  if (tile === "wall" || tile === "hard-wall") return canPassThroughWalls === true;
+function isPlayerInvisible(gameState: GameStateSnapshot) {
+  const turns = gameState.player?.buffsRaw?.invisibilityTurns;
+  return typeof turns === "number" && Number.isFinite(turns) && turns > 0;
+}
+
+function directionFromDelta(dx: number, dy: number): MoveDirection | null {
+  if (dx === 1 && dy === 0) return "right";
+  if (dx === -1 && dy === 0) return "left";
+  if (dx === 0 && dy === 1) return "down";
+  if (dx === 0 && dy === -1) return "up";
+  return null;
+}
+
+function isBlockingInteractiveType(type: string) {
+  const normalized = type.trim().toLowerCase();
+  return normalized === "pot" || normalized === "crate" || normalized === "chest" || normalized === "rock" || normalized === "stairs";
+}
+
+function canEnemyMoveTo(
+  gameState: GameStateSnapshot,
+  enemy: Pick<EnemySnapshot, "id" | "x" | "y" | "canPassThroughWalls">,
+  x: number,
+  y: number,
+) {
+  if (y < 0 || x < 0) return false;
+  const row = gameState.mapData?.[y];
+  if (!row || x >= row.length) return false;
+
+  if (!enemy.canPassThroughWalls && row[x] !== 0) {
+    return false;
+  }
+
+  if (gameState.player && x === gameState.player.x && y === gameState.player.y) {
+    return false;
+  }
+
+  const occupiedByEnemy = gameState.enemies.some(
+    (candidate) =>
+      candidate.id !== enemy.id &&
+      candidate.x === x &&
+      candidate.y === y &&
+      (candidate.hp === null || candidate.hp > 0),
+  );
+  if (occupiedByEnemy) return false;
+
+  const blockedByPortal = gameState.interactive.some(
+    (item) => item.type.trim().toLowerCase() === "portal" && item.x === x && item.y === y,
+  );
+  if (blockedByPortal) return false;
+
+  if (!enemy.canPassThroughWalls) {
+    const blockedByInteractive = gameState.interactive.some(
+      (item) => isBlockingInteractiveType(item.type) && item.x === x && item.y === y,
+    );
+    if (blockedByInteractive) return false;
+  }
+
   return true;
+}
+
+function getDeterministicDetectionRange(enemy: Pick<EnemySnapshot, "spriteType">) {
+  const spriteType = normalizeEnemySpriteType(enemy.spriteType);
+  if (spriteType === "skeleton") return 8;
+  if (spriteType === "skullbat") return 7;
+  if (spriteType === "ghost" || spriteType === "ghost2") return 5;
+  return 6;
+}
+
+function getCardinalMoveOptions(enemy: Pick<EnemySnapshot, "x" | "y">) {
+  return [
+    { direction: "up" as const, x: enemy.x, y: enemy.y - 1 },
+    { direction: "down" as const, x: enemy.x, y: enemy.y + 1 },
+    { direction: "left" as const, x: enemy.x - 1, y: enemy.y },
+    { direction: "right" as const, x: enemy.x + 1, y: enemy.y },
+  ];
+}
+
+function predictUniqueRandomMoveDirection(
+  gameState: GameStateSnapshot,
+  enemy: Pick<EnemySnapshot, "id" | "x" | "y" | "canPassThroughWalls">,
+) {
+  const validMoves = getCardinalMoveOptions(enemy).filter((move) => canEnemyMoveTo(gameState, enemy, move.x, move.y));
+  return validMoves.length === 1 ? validMoves[0].direction : null;
+}
+
+function isWalkableForPathfinding(
+  gameState: GameStateSnapshot,
+  enemy: Pick<EnemySnapshot, "canPassThroughWalls">,
+  x: number,
+  y: number,
+) {
+  if (y < 0 || x < 0) return false;
+  const row = gameState.mapData?.[y];
+  if (!row || x >= row.length) return false;
+
+  if (!enemy.canPassThroughWalls && row[x] !== 0) {
+    return false;
+  }
+
+  const blockedByPortal = gameState.interactive.some(
+    (item) => item.type.trim().toLowerCase() === "portal" && item.x === x && item.y === y,
+  );
+  if (blockedByPortal) return false;
+
+  if (enemy.canPassThroughWalls) {
+    return true;
+  }
+
+  return !gameState.interactive.some(
+    (item) => isBlockingInteractiveType(item.type) && item.x === x && item.y === y,
+  );
+}
+
+function findPathTowardPlayer(
+  gameState: GameStateSnapshot,
+  enemy: Pick<EnemySnapshot, "id" | "x" | "y" | "canPassThroughWalls">,
+) {
+  const player = gameState.player;
+  if (!player) return null;
+
+  const startKey = keyOf(enemy.x, enemy.y);
+  const queue = [{ x: enemy.x, y: enemy.y, depth: 0 }];
+  const cameFrom = new Map<string, { x: number; y: number } | null>([[startKey, null]]);
+  const directions = [
+    { dx: 0, dy: -1 },
+    { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 },
+    { dx: 1, dy: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+
+    if (current.x === player.x && current.y === player.y) {
+      let step = { x: current.x, y: current.y };
+      let previous = cameFrom.get(keyOf(step.x, step.y));
+
+      while (previous && !(previous.x === enemy.x && previous.y === enemy.y)) {
+        step = previous;
+        previous = cameFrom.get(keyOf(step.x, step.y));
+      }
+
+      return step;
+    }
+
+    if (current.depth >= 20) continue;
+
+    for (const direction of directions) {
+      const nextX = current.x + direction.dx;
+      const nextY = current.y + direction.dy;
+      const nextKey = keyOf(nextX, nextY);
+
+      if (cameFrom.has(nextKey)) continue;
+      if (!isWalkableForPathfinding(gameState, enemy, nextX, nextY)) continue;
+
+      cameFrom.set(nextKey, { x: current.x, y: current.y });
+      queue.push({ x: nextX, y: nextY, depth: current.depth + 1 });
+    }
+  }
+
+  return null;
+}
+
+function predictChaserNextMoveDirection(gameState: GameStateSnapshot, enemy: Pick<EnemySnapshot, "id" | "x" | "y" | "type" | "spriteType" | "canPassThroughWalls">) {
+  const player = gameState.player;
+  if (!player) return null;
+
+  const distanceToPlayer = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
+  const detectionRange = getDeterministicDetectionRange(enemy);
+
+  if (distanceToPlayer > detectionRange) {
+    return predictUniqueRandomMoveDirection(gameState, enemy);
+  }
+
+  const dx = player.x - enemy.x;
+  const dy = player.y - enemy.y;
+  const directions: Array<{ direction: MoveDirection; x: number; y: number }> = [];
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    directions.push(dx > 0 ? { direction: "right", x: enemy.x + 1, y: enemy.y } : { direction: "left", x: enemy.x - 1, y: enemy.y });
+    if (dy > 0) directions.push({ direction: "down", x: enemy.x, y: enemy.y + 1 });
+    else if (dy < 0) directions.push({ direction: "up", x: enemy.x, y: enemy.y - 1 });
+  } else if (dy !== 0) {
+    directions.push(dy > 0 ? { direction: "down", x: enemy.x, y: enemy.y + 1 } : { direction: "up", x: enemy.x, y: enemy.y - 1 });
+    if (dx > 0) directions.push({ direction: "right", x: enemy.x + 1, y: enemy.y });
+    else if (dx < 0) directions.push({ direction: "left", x: enemy.x - 1, y: enemy.y });
+  }
+
+  for (const direction of directions) {
+    if (canEnemyMoveTo(gameState, enemy, direction.x, direction.y)) {
+      return direction.direction;
+    }
+  }
+
+  const nextStep = findPathTowardPlayer(gameState, enemy);
+  if (!nextStep) return null;
+  if (!canEnemyMoveTo(gameState, enemy, nextStep.x, nextStep.y)) return null;
+  return directionFromDelta(nextStep.x - enemy.x, nextStep.y - enemy.y);
+}
+
+function predictFleeingNextMoveDirection(gameState: GameStateSnapshot, enemy: Pick<EnemySnapshot, "id" | "x" | "y" | "canPassThroughWalls">) {
+  const player = gameState.player;
+  if (!player) return null;
+
+  const dx = player.x - enemy.x;
+  const dy = player.y - enemy.y;
+  const escapeDirections: Array<{ direction: MoveDirection; x: number; y: number; priority: number }> = [];
+
+  if (dx > 0) escapeDirections.push({ direction: "left", x: enemy.x - 1, y: enemy.y, priority: Math.abs(dx) });
+  else if (dx < 0) escapeDirections.push({ direction: "right", x: enemy.x + 1, y: enemy.y, priority: Math.abs(dx) });
+
+  if (dy > 0) escapeDirections.push({ direction: "up", x: enemy.x, y: enemy.y - 1, priority: Math.abs(dy) });
+  else if (dy < 0) escapeDirections.push({ direction: "down", x: enemy.x, y: enemy.y + 1, priority: Math.abs(dy) });
+
+  escapeDirections.sort((left, right) => right.priority - left.priority);
+
+  for (const direction of escapeDirections) {
+    if (canEnemyMoveTo(gameState, enemy, direction.x, direction.y)) {
+      return direction.direction;
+    }
+  }
+
+  const perpendicular: Array<{ direction: MoveDirection; x: number; y: number }> = [];
+  if (dx !== 0) {
+    perpendicular.push({ direction: "up", x: enemy.x, y: enemy.y - 1 });
+    perpendicular.push({ direction: "down", x: enemy.x, y: enemy.y + 1 });
+  }
+  if (dy !== 0) {
+    perpendicular.push({ direction: "left", x: enemy.x - 1, y: enemy.y });
+    perpendicular.push({ direction: "right", x: enemy.x + 1, y: enemy.y });
+  }
+
+  const validPerpendicular = perpendicular.filter((direction) => canEnemyMoveTo(gameState, enemy, direction.x, direction.y));
+  return validPerpendicular.length === 1 ? validPerpendicular[0].direction : null;
 }
 
 export function predictEnemyNextMoveDirection(
   gameState: GameStateSnapshot,
   enemy: Pick<
     EnemySnapshot,
-    "x" | "y" | "type" | "moveCooldown" | "patternDirection" | "patternMovingPositive" | "canPassThroughWalls"
+    "id" | "x" | "y" | "type" | "spriteType" | "moveCooldown" | "patternDirection" | "patternMovingPositive" | "canPassThroughWalls"
   >,
 ): MoveDirection | null {
-  if (isEnemyAdjacentToPlayer(gameState, enemy.x, enemy.y)) return null;
+  const playerInvisible = isPlayerInvisible(gameState);
+  if (enemy.type === "stationary") return null;
   if (typeof enemy.moveCooldown === "number" && enemy.moveCooldown > 0) return null;
+  if (enemy.type === "fleeing") return predictFleeingNextMoveDirection(gameState, enemy);
+  if (isEnemyAdjacentToPlayer(gameState, enemy.x, enemy.y) && !playerInvisible) return null;
+  if (playerInvisible) return predictUniqueRandomMoveDirection(gameState, enemy);
+
+  if (enemy.type === "chaser") {
+    return predictChaserNextMoveDirection(gameState, enemy);
+  }
+
+  if (enemy.type === "erratic") {
+    return predictUniqueRandomMoveDirection(gameState, enemy);
+  }
+
   if (enemy.type !== "pattern") return null;
 
   const direction = normalizePatternDirection(enemy.patternDirection);
@@ -254,7 +497,7 @@ export function predictEnemyNextMoveDirection(
   const delta = patternDirectionDelta(direction, enemy.patternMovingPositive);
   const nextX = enemy.x + delta.dx;
   const nextY = enemy.y + delta.dy;
-  if (!canEnemyTraverseTile(gameState, nextX, nextY, enemy.canPassThroughWalls)) return null;
+  if (!canEnemyMoveTo(gameState, enemy, nextX, nextY)) return null;
 
   if (delta.dx === 1) return "right";
   if (delta.dx === -1) return "left";
@@ -264,6 +507,7 @@ export function predictEnemyNextMoveDirection(
 
 export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySnapshot) {
   const spriteType = normalizeEnemySpriteType(enemy.spriteType);
+  const nextMove = predictEnemyNextMoveDirection(gameState, enemy);
 
   if (isEnemyAdjacentToPlayer(gameState, enemy.x, enemy.y)) {
     if (enemy.type === "fleeing") return "adjacent strike";
@@ -275,11 +519,11 @@ export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySn
   }
 
   if (enemy.type === "pattern") {
-    const nextMove = predictEnemyNextMoveDirection(gameState, enemy);
     return nextMove ? `move ${nextMove}` : "blocked / flip soon";
   }
 
   if (enemy.type === "fleeing") {
+    if (nextMove) return `flee ${nextMove}`;
     return spriteType === "pengu" ? "fleeing event mob" : "fleeing boss";
   }
 
@@ -288,7 +532,7 @@ export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySn
   }
 
   if (enemy.type === "erratic") {
-    return "random movement";
+    return nextMove ? `move ${nextMove}` : "random movement";
   }
 
   if (enemy.type === "wobble") {
@@ -300,15 +544,17 @@ export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySn
   }
 
   if (enemy.type === "chaser" && spriteType === "mimic") {
+    if (nextMove) return `ambush ${nextMove}`;
     return "ambush chase";
   }
 
   if (enemy.hasHeavyHit) {
+    if (nextMove) return `move ${nextMove}`;
     return "heavy chase";
   }
 
   if (enemy.type === "chaser") {
-    return "chase if in range";
+    return nextMove ? `move ${nextMove}` : "chase if in range";
   }
 
   return "move";
