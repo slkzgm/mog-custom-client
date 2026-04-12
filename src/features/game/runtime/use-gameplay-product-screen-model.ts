@@ -48,13 +48,14 @@ export function useGameplayProductScreenModel() {
   const amberBalanceQuery = useItemBalanceQuery("amber", auth.isAuthenticated);
   const claimsQuery = useClaimsQuery(auth.isAuthenticated);
   const weeklyPoolQuery = useWeeklyPoolQuery(auth.isAuthenticated);
+  const historyScopeKey = auth.authSessionQuery.data?.user?.address ?? auth.walletAddress ?? null;
   const {
     history: completedRunHistory,
     activeRecap: completedRunRecap,
     appendCompletedRun,
     dismissActiveRecap: dismissCompletedRunRecap,
     clearHistory: clearCompletedRunHistory,
-  } = useLocalRunHistory();
+  } = useLocalRunHistory(historyScopeKey);
   const refreshLobbyData = useCallback(async () => {
     await Promise.all([
       normalGameplay.runSession.activeRunQuery.refetch(),
