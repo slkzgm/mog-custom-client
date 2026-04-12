@@ -93,14 +93,20 @@ export function useRunDerivedState(gameState: GameStateSnapshot | null, enabled 
   const trapLines = useMemo(() => {
     if (!enabled || !gameState) return [];
     return gameState.traps.map(
-      (trap, index) => `${index + 1}. ${trap.id ?? trap.type} [${trap.type}] @(${trap.x},${trap.y})`,
+      (trap, index) =>
+        `${index + 1}. ${trap.id ?? trap.type} [${trap.type}] @(${trap.x},${trap.y}) dmg=${trap.damage ?? "-"} revealed=${
+          trap.isRevealed ?? "-"
+        }`,
     );
   }, [enabled, gameState]);
 
   const arrowTrapLines = useMemo(() => {
     if (!enabled || !gameState) return [];
     return gameState.arrowTraps.map(
-      (trap, index) => `${index + 1}. ${trap.id ?? trap.type} [${trap.type}] @(${trap.x},${trap.y})`,
+      (trap, index) =>
+        `${index + 1}. ${trap.id ?? trap.type} [${trap.type}] trigger=(${trap.triggerX},${trap.triggerY}) tombstone=(${trap.tombstoneX},${
+          trap.tombstoneY
+        }) dmg=${trap.damage ?? "-"} armed=${trap.isArmed ?? "-"} revealed=${trap.isRevealed ?? "-"}`,
     );
   }, [enabled, gameState]);
 

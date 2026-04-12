@@ -1,4 +1,4 @@
-import type { GameStateSnapshot, MapEntitySnapshot } from "../game.types";
+import type { ArrowTrapSnapshot, GameStateSnapshot, MapEntitySnapshot, TrapSnapshot } from "../game.types";
 import { isEffectivelyVisible } from "../game-visibility";
 
 export type RememberedEntityKind = "interactive" | "pickup" | "trap" | "arrow-trap" | "portal";
@@ -36,6 +36,7 @@ function rememberEntity(
   floorKey: string,
   kind: RememberedEntityKind,
   entity: MapEntitySnapshot,
+  isRevealed: boolean | null = null,
 ): RememberedEntity {
   const coordKey = coordKeyOf(entity.x, entity.y);
   return {
@@ -49,7 +50,7 @@ function rememberEntity(
     id: entity.id,
     value: entity.value,
     damage: entity.damage,
-    isRevealed: null,
+    isRevealed,
     lastSeenAt: new Date().toISOString(),
   };
 }
@@ -76,13 +77,14 @@ export function rememberVisibleEntities(state: MapEntityMemoryState, gameState: 
   const visitEntity = (
     kind: RememberedEntityKind,
     entity: MapEntitySnapshot,
+    options?: { isRevealed?: boolean | null },
   ) => {
     if (!isVisible(gameState, entity.x, entity.y)) return;
     const coordKey = coordKeyOf(entity.x, entity.y);
     visibleCoords.add(coordKey);
     presentCoords.add(coordKey);
 
-    const nextEntity = rememberEntity(floorKey, kind, entity);
+    const nextEntity = rememberEntity(floorKey, kind, entity, options?.isRevealed ?? null);
     const existing = nextFloorEntities[coordKey];
     if (
       existing &&
@@ -106,8 +108,9 @@ export function rememberVisibleEntities(state: MapEntityMemoryState, gameState: 
 
   for (const entity of gameState.interactive) visitEntity("interactive", entity);
   for (const entity of gameState.pickups) visitEntity("pickup", entity);
-  for (const entity of gameState.traps) visitEntity("trap", entity);
-  for (const entity of gameState.arrowTraps) visitEntity("arrow-trap", entity);
+  for (const entity of gameState.traps) visitEntity("trap", entity, { isRevealed: (entity as TrapSnapshot).isRevealed });
+  for (const entity of gameState.arrowTraps)
+    visitEntity("arrow-trap", entity, { isRevealed: (entity as ArrowTrapSnapshot).isRevealed });
   for (const entity of gameState.portals) visitEntity("portal", entity);
 
   const mapHeight = gameState.fogMask?.length ?? 0;

@@ -1,4 +1,4 @@
-import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
+import type { ArrowTrapSnapshot, EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection, TrapSnapshot } from "../game.types";
 import { effectiveFogValueAt } from "../game-visibility";
 import type { RememberedEntity } from "../runtime/map-entity-memory";
 import {
@@ -74,10 +74,10 @@ export interface EntityPositionLookups {
   interactiveByKey: Map<string, MapEntitySnapshot>;
   pickupGroupsByKey: Map<string, MapEntitySnapshot[]>;
   pickupByKey: Map<string, MapEntitySnapshot>;
-  trapGroupsByKey: Map<string, MapEntitySnapshot[]>;
-  trapByKey: Map<string, MapEntitySnapshot>;
-  arrowTrapGroupsByKey: Map<string, MapEntitySnapshot[]>;
-  arrowTrapByKey: Map<string, MapEntitySnapshot>;
+  trapGroupsByKey: Map<string, TrapSnapshot[]>;
+  trapByKey: Map<string, TrapSnapshot>;
+  arrowTrapGroupsByKey: Map<string, ArrowTrapSnapshot[]>;
+  arrowTrapByKey: Map<string, ArrowTrapSnapshot>;
   portalGroupsByKey: Map<string, MapEntitySnapshot[]>;
   portalByKey: Map<string, MapEntitySnapshot>;
   rockKeys: Set<string>;
@@ -95,7 +95,7 @@ export function buildEntityPositionLookups(gameState: GameStateSnapshot): Entity
   const pickupByKey = toPrimaryLookup(pickupGroupsByKey, (items) => items[0] ?? null);
   const trapGroupsByKey = toGroupedLookup(gameState.traps);
   const trapByKey = toPrimaryLookup(trapGroupsByKey, (items) => items[0] ?? null);
-  const arrowTrapGroupsByKey = toGroupedLookup(gameState.arrowTraps);
+  const arrowTrapGroupsByKey = toArrowTrapGroupedLookup(gameState.arrowTraps);
   const arrowTrapByKey = toPrimaryLookup(arrowTrapGroupsByKey, (items) => items[0] ?? null);
   const portalGroupsByKey = toGroupedLookup(gameState.portals);
   const portalByKey = toPrimaryLookup(portalGroupsByKey, (items) => items[0] ?? null);
@@ -408,6 +408,22 @@ export function toGroupedLookup<T extends { x: number; y: number }>(items: T[]) 
   return lookup;
 }
 
+export function toArrowTrapGroupedLookup(items: ArrowTrapSnapshot[]) {
+  const lookup = new Map<string, ArrowTrapSnapshot[]>();
+
+  for (const item of items) {
+    const key = keyOf(item.triggerX, item.triggerY);
+    const current = lookup.get(key);
+    if (current) {
+      current.push(item);
+      continue;
+    }
+    lookup.set(key, [item]);
+  }
+
+  return lookup;
+}
+
 function toPrimaryLookup<T extends { x: number; y: number }>(
   groups: Map<string, T[]>,
   pickPrimary: (items: T[]) => T | null,
@@ -455,7 +471,7 @@ function labelPickupStackOccupant(stack: PickupStackVisual): CellStackEntry {
 function labelMapEntityOccupant(kind: "trap" | "arrow-trap" | "portal", entity: MapEntitySnapshot): CellStackEntry {
   return {
     kind,
-    label: kind === "portal" ? entity.type : entity.type,
+    label: kind === "arrow-trap" ? `${entity.type} trigger` : entity.type,
   };
 }
 
@@ -586,7 +602,7 @@ export function rememberedEntityToCellEntity(entity: RememberedEntity): CellEnti
     return {
       kind: entity.kind,
       label: entity.type,
-      token: "^",
+      token: entity.kind === "arrow-trap" ? "A" : "^",
       accent: "trap",
       hpRatio: null,
       showToken: true,
@@ -762,7 +778,7 @@ export function resolveEntityWithLookups(
     return {
       kind: "arrow-trap",
       label: arrowTrap.type,
-      token: "^",
+      token: "A",
       accent: "trap",
       hpRatio: null,
       showToken: true,

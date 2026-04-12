@@ -2,6 +2,7 @@ import { apiRequest } from "../../lib/http/api-client";
 import { ApiError } from "../../lib/http/api-error";
 import type {
   ActiveRunSnapshot,
+  ArrowTrapSnapshot,
   BalanceResource,
   ClaimsSnapshot,
   ClaimsWeekSnapshot,
@@ -20,6 +21,7 @@ import type {
   RunStateSnapshot,
   SelectUpgradeParams,
   TeleportRunResult,
+  TrapSnapshot,
   TorchSnapshot,
 } from "./game.types";
 
@@ -249,6 +251,61 @@ function toTorchList(value: unknown): TorchSnapshot[] {
   return torches;
 }
 
+function toTrapList(value: unknown): TrapSnapshot[] {
+  const source = toRecordArray(value);
+  const traps: TrapSnapshot[] = [];
+
+  for (const item of source) {
+    const x = pickFirstNumber(item, ["x"]);
+    const y = pickFirstNumber(item, ["y"]);
+    if (x === null || y === null) continue;
+
+    traps.push({
+      x,
+      y,
+      type: pickFirstString(item, ["type"]) ?? "trap",
+      id: pickFirstString(item, ["id"]),
+      value: null,
+      damage: pickFirstNumber(item, ["damage"]),
+      tileIndex: pickFirstNumber(item, ["tileIndex"]),
+      isRevealed: typeof item.isRevealed === "boolean" ? item.isRevealed : null,
+    });
+  }
+
+  return traps;
+}
+
+function toArrowTrapList(value: unknown): ArrowTrapSnapshot[] {
+  const source = toRecordArray(value);
+  const arrowTraps: ArrowTrapSnapshot[] = [];
+
+  for (const item of source) {
+    const triggerX = pickFirstNumber(item, ["triggerX", "x"]);
+    const triggerY = pickFirstNumber(item, ["triggerY", "y"]);
+    const tombstoneX = pickFirstNumber(item, ["tombstoneX"]);
+    const tombstoneY = pickFirstNumber(item, ["tombstoneY"]);
+    if (triggerX === null || triggerY === null || tombstoneX === null || tombstoneY === null) continue;
+
+    arrowTraps.push({
+      x: triggerX,
+      y: triggerY,
+      triggerX,
+      triggerY,
+      tombstoneX,
+      tombstoneY,
+      type: pickFirstString(item, ["type"]) ?? "arrow-trap",
+      id: pickFirstString(item, ["id"]),
+      value: null,
+      damage: pickFirstNumber(item, ["damage"]),
+      tileIndex: pickFirstNumber(item, ["tileIndex"]),
+      isArmed: typeof item.isArmed === "boolean" ? item.isArmed : null,
+      isRevealed: typeof item.isRevealed === "boolean" ? item.isRevealed : null,
+    });
+  }
+
+  return arrowTraps;
+}
+
 function pickArrayLength(value: unknown): number | null {
   if (!Array.isArray(value)) return null;
   return value.length;
@@ -320,8 +377,8 @@ function toGameState(payload: unknown): GameStateSnapshot | null {
     torches: toTorchList(source.torches),
     portals: toMapEntityList(source.portals, "portal"),
     pickups: toMapEntityList(source.pickups, "pickup"),
-    traps: toMapEntityList(source.traps, "trap"),
-    arrowTraps: toMapEntityList(source.arrowTraps, "arrow-trap"),
+    traps: toTrapList(source.traps),
+    arrowTraps: toArrowTrapList(source.arrowTraps),
     raw: source,
   };
 }

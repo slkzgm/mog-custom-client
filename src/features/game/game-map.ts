@@ -1,4 +1,4 @@
-import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "./game.types";
+import type { ArrowTrapSnapshot, EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "./game.types";
 import { effectiveFogValueAt } from "./game-visibility";
 import { interactiveSymbol, isRockInteractive } from "./map-interactive-visuals";
 
@@ -38,6 +38,14 @@ function toEntityLookup<T extends { x: number; y: number }>(entities: T[]): Map<
   const lookup = new Map<string, T>();
   for (const entity of entities) {
     lookup.set(positionKey(entity.x, entity.y), entity);
+  }
+  return lookup;
+}
+
+function toArrowTrapLookup(arrowTraps: ArrowTrapSnapshot[]): Map<string, ArrowTrapSnapshot> {
+  const lookup = new Map<string, ArrowTrapSnapshot>();
+  for (const trap of arrowTraps) {
+    lookup.set(positionKey(trap.triggerX, trap.triggerY), trap);
   }
   return lookup;
 }
@@ -169,7 +177,7 @@ export function buildAsciiMap(gameState: GameStateSnapshot): string[] {
   const portalsByPosition = toEntityLookup(gameState.portals);
   const pickupsByPosition = toEntityLookup(gameState.pickups);
   const trapsByPosition = toEntityLookup(gameState.traps);
-  const arrowTrapsByPosition = toEntityLookup(gameState.arrowTraps);
+  const arrowTrapsByPosition = toArrowTrapLookup(gameState.arrowTraps);
   const player = gameState.player;
 
   const rows: string[] = [];

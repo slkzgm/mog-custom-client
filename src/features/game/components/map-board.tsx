@@ -12,7 +12,7 @@ import {
 import { effectiveFogValueAt } from "../game-visibility";
 import { interactiveSymbol, isRockInteractive } from "../map-interactive-visuals";
 import { resolvePickupVisual } from "../map-pickup-visuals";
-import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection } from "../game.types";
+import type { ArrowTrapSnapshot, EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, MoveDirection, TrapSnapshot } from "../game.types";
 
 type FogState = "hidden" | "explored" | "visible";
 type CellHintType = "attack" | "break" | "move" | "blocked";
@@ -74,6 +74,14 @@ function toLookup<T extends { x: number; y: number }>(items: T[]): MapLookup<T> 
   const lookup: MapLookup<T> = new Map();
   for (const item of items) {
     lookup.set(keyOf(item.x, item.y), item);
+  }
+  return lookup;
+}
+
+function toArrowTrapLookup(items: ArrowTrapSnapshot[]): MapLookup<ArrowTrapSnapshot> {
+  const lookup: MapLookup<ArrowTrapSnapshot> = new Map();
+  for (const item of items) {
+    lookup.set(keyOf(item.triggerX, item.triggerY), item);
   }
   return lookup;
 }
@@ -146,7 +154,8 @@ function entityTokenSymbol(kind: CellEntityKind | null, symbol: string): string 
   if (kind === "enemy") return symbol === "G" ? "G" : "!";
   if (kind === "interactive") return symbol;
   if (kind === "pickup") return "+";
-  if (kind === "trap" || kind === "arrow-trap") return "^";
+  if (kind === "trap") return "^";
+  if (kind === "arrow-trap") return "A";
   if (kind === "portal") return "O";
   return symbol;
 }
@@ -257,8 +266,8 @@ function resolveEntityData(params: {
   enemiesByKey: MapLookup<EnemySnapshot>;
   interactiveByKey: MapLookup<MapEntitySnapshot>;
   pickupsByKey: MapLookup<MapEntitySnapshot>;
-  trapsByKey: MapLookup<MapEntitySnapshot>;
-  arrowTrapsByKey: MapLookup<MapEntitySnapshot>;
+  trapsByKey: MapLookup<TrapSnapshot>;
+  arrowTrapsByKey: MapLookup<ArrowTrapSnapshot>;
   portalsByKey: MapLookup<MapEntitySnapshot>;
 }): {
   symbol: string;
@@ -412,7 +421,7 @@ export function MapBoard({
   const interactiveByKey = useMemo(() => toLookup(gameState.interactive), [gameState.interactive]);
   const pickupsByKey = useMemo(() => toLookup(gameState.pickups), [gameState.pickups]);
   const trapsByKey = useMemo(() => toLookup(gameState.traps), [gameState.traps]);
-  const arrowTrapsByKey = useMemo(() => toLookup(gameState.arrowTraps), [gameState.arrowTraps]);
+  const arrowTrapsByKey = useMemo(() => toArrowTrapLookup(gameState.arrowTraps), [gameState.arrowTraps]);
   const portalsByKey = useMemo(() => toLookup(gameState.portals), [gameState.portals]);
 
   const xValues = useMemo(() => {

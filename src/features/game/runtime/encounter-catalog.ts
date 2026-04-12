@@ -1,4 +1,4 @@
-import type { EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, TorchSnapshot } from "../game.types";
+import type { ArrowTrapSnapshot, EnemySnapshot, GameStateSnapshot, MapEntitySnapshot, TorchSnapshot, TrapSnapshot } from "../game.types";
 
 export const encounterCategoryOrder = [
   "enemies",
@@ -222,8 +222,18 @@ export function recordGameStateEncounters(catalog: EncounterCatalog, gameState: 
   })) || hasChanges;
   hasChanges = mergeEntityGroup(entryLookups.interactive, "interactive", gameState.interactive, gameState) || hasChanges;
   hasChanges = mergeEntityGroup(entryLookups.pickups, "pickups", gameState.pickups, gameState) || hasChanges;
-  hasChanges = mergeEntityGroup(entryLookups.traps, "traps", gameState.traps, gameState) || hasChanges;
-  hasChanges = mergeEntityGroup(entryLookups.arrowTraps, "arrowTraps", gameState.arrowTraps, gameState) || hasChanges;
+  hasChanges = mergeEntityGroup(entryLookups.traps, "traps", gameState.traps, gameState, (trap: TrapSnapshot) => ({
+    isRevealed: trap.isRevealed,
+  })) || hasChanges;
+  hasChanges = mergeEntityGroup(
+    entryLookups.arrowTraps,
+    "arrowTraps",
+    gameState.arrowTraps,
+    gameState,
+    (trap: ArrowTrapSnapshot) => ({
+      isRevealed: trap.isRevealed,
+    }),
+  ) || hasChanges;
   hasChanges = mergeEntityGroup(entryLookups.portals, "portals", gameState.portals, gameState) || hasChanges;
   hasChanges = mergeEntityGroup(entryLookups.torches, "torches", gameState.torches, gameState, (torch: TorchSnapshot) => ({
     isRevealed: torch.isRevealed,

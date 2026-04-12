@@ -64,6 +64,19 @@ export interface MapEntitySnapshot {
   tileIndex: number | null;
 }
 
+export interface TrapSnapshot extends MapEntitySnapshot {
+  isRevealed: boolean | null;
+}
+
+export interface ArrowTrapSnapshot extends MapEntitySnapshot {
+  triggerX: number;
+  triggerY: number;
+  tombstoneX: number;
+  tombstoneY: number;
+  isArmed: boolean | null;
+  isRevealed: boolean | null;
+}
+
 export interface GameBuffSnapshot {
   key: string;
   value: string | number | boolean;
@@ -113,8 +126,8 @@ export interface GameStateSnapshot {
   torches: TorchSnapshot[];
   portals: MapEntitySnapshot[];
   pickups: MapEntitySnapshot[];
-  traps: MapEntitySnapshot[];
-  arrowTraps: MapEntitySnapshot[];
+  traps: TrapSnapshot[];
+  arrowTraps: ArrowTrapSnapshot[];
   raw: Record<string, unknown>;
 }
 
