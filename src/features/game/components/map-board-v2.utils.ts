@@ -248,6 +248,11 @@ function isBlockingInteractiveType(type: string) {
   return normalized === "pot" || normalized === "crate" || normalized === "chest" || normalized === "rock" || normalized === "stairs";
 }
 
+function isPathBlockingInteractiveType(type: string) {
+  const normalized = type.trim().toLowerCase();
+  return normalized === "pot" || normalized === "crate" || normalized === "chest" || normalized === "rock";
+}
+
 function canEnemyMoveTo(
   gameState: GameStateSnapshot,
   enemy: Pick<EnemySnapshot, "id" | "x" | "y" | "canPassThroughWalls">,
@@ -655,6 +660,108 @@ export function buildHints(gameState: GameStateSnapshot) {
   }
 
   return hints;
+}
+
+export function findKnownStairsKey(
+  gameState: GameStateSnapshot,
+  rememberedEntities: Map<string, RememberedEntity>,
+) {
+  const visibleStairs = gameState.interactive.find((item) => item.type.trim().toLowerCase() === "stairs");
+  if (visibleStairs) return keyOf(visibleStairs.x, visibleStairs.y);
+
+  for (const [key, entity] of rememberedEntities) {
+    if (entity.kind === "interactive" && entity.type.trim().toLowerCase() === "stairs") {
+      return key;
+    }
+  }
+
+  return null;
+}
+
+export function buildKnownStairsPath(
+  gameState: GameStateSnapshot,
+  lookups: EntityPositionLookups,
+  rememberedEntities: Map<string, RememberedEntity>,
+) {
+  const player = gameState.player;
+  if (!player) return { distance: null, trailKeys: new Set<string>(), stairsKey: null };
+
+  const stairsKey = findKnownStairsKey(gameState, rememberedEntities);
+  if (!stairsKey) return { distance: null, trailKeys: new Set<string>(), stairsKey: null };
+
+  const stairsCoordinates = parseCoordinateKey(stairsKey);
+  if (!stairsCoordinates) return { distance: null, trailKeys: new Set<string>(), stairsKey: null };
+
+  const queue = [{ x: player.x, y: player.y }];
+  const startKey = keyOf(player.x, player.y);
+  const visited = new Set<string>([startKey]);
+  const cameFrom = new Map<string, string | null>([[startKey, null]]);
+  const directions = [
+    { dx: 0, dy: -1 },
+    { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 },
+    { dx: 1, dy: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) break;
+
+    if (current.x === stairsCoordinates.x && current.y === stairsCoordinates.y) {
+      const trailKeys = new Set<string>();
+      let cursorKey = keyOf(current.x, current.y);
+      let distance = 0;
+
+      while (cursorKey && cursorKey !== startKey) {
+        trailKeys.add(cursorKey);
+        distance += 1;
+        const previousKey = cameFrom.get(cursorKey) ?? null;
+        if (!previousKey) break;
+        cursorKey = previousKey;
+      }
+
+      return {
+        distance,
+        trailKeys,
+        stairsKey,
+      };
+    }
+
+    for (const direction of directions) {
+      const nextX = current.x + direction.dx;
+      const nextY = current.y + direction.dy;
+      const nextKey = keyOf(nextX, nextY);
+      if (visited.has(nextKey)) continue;
+
+      const fog = fogStateAt(gameState, nextX, nextY);
+      if (fog === "hidden") continue;
+
+      const tile = tileKindAtWithLookups(gameState, nextX, nextY, lookups);
+      if (tile !== "corridor") continue;
+
+      const visibleBlockingInteractive = lookups.interactiveGroupsByKey.get(nextKey)?.some((item) => isPathBlockingInteractiveType(item.type)) ?? false;
+      if (visibleBlockingInteractive) continue;
+
+      const rememberedBlockingInteractive = rememberedEntities.get(nextKey);
+      if (
+        rememberedBlockingInteractive &&
+        rememberedBlockingInteractive.kind === "interactive" &&
+        isPathBlockingInteractiveType(rememberedBlockingInteractive.type)
+      ) {
+        continue;
+      }
+
+      visited.add(nextKey);
+      cameFrom.set(nextKey, keyOf(current.x, current.y));
+      queue.push({ x: nextX, y: nextY });
+    }
+  }
+
+  return {
+    distance: null,
+    trailKeys: new Set<string>(),
+    stairsKey,
+  };
 }
 
 export function toLookup<T extends { x: number; y: number }>(items: T[]) {

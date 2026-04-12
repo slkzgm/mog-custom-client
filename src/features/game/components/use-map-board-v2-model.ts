@@ -20,6 +20,7 @@ import type {
   MapBoardV2Props,
 } from "./map-board-v2.types";
 import {
+  buildKnownStairsPath,
   buildEntityPositionLookups,
   buildHints,
   buildViewport,
@@ -262,6 +263,10 @@ export function useMapBoardV2Model({
           : null,
     [displayGameState, selectedEnemy, selectedEnemyShroomCharge],
   );
+  const knownStairsPath = useMemo(
+    () => buildKnownStairsPath(displayGameState, entityLookups, entityMemory.rememberedEntities),
+    [displayGameState, entityLookups, entityMemory.rememberedEntities],
+  );
 
   const cells = useMemo(() => {
     const nextCells: MapBoardCellViewModel[] = [];
@@ -290,6 +295,7 @@ export function useMapBoardV2Model({
         const isSelected = key === activeSelectedKey;
         const isPlayerTile = Boolean(displayGameState.player && displayGameState.player.x === x && displayGameState.player.y === y);
         const portalAtCell = entityLookups.portalByKey.get(key) ?? null;
+        const isStairsTrail = knownStairsPath.trailKeys.has(key);
         const action = resolveCellAction({
           hint,
           isPlayerTile,
@@ -313,12 +319,14 @@ export function useMapBoardV2Model({
           occupants,
           stackBadgeText: occupants.length > 1 ? `+${occupants.length - 1}` : null,
           shroomDanger,
+          isStairsTrail,
           className: [
             "map2-cell",
             `map2-cell-${entity?.useWallSurface ? "wall" : tile}`,
             `map2-fog-${fog}`,
             isVisited ? "map2-cell-visited" : "",
             isStartCell ? "map2-cell-start" : "",
+            isStairsTrail ? "map2-cell-stairs-trail" : "",
             shroomDanger ? "map2-cell-shroom-danger" : "",
             shroomDanger?.isMaxRange ? "map2-cell-shroom-max-range" : "",
             entity?.isPortalPromptActive ? "map2-cell-portal-prompt" : "",
@@ -349,6 +357,7 @@ export function useMapBoardV2Model({
     onPortalAction,
     playerPortal,
     promptedPortalKey,
+    knownStairsPath.trailKeys,
     shroomDangerTiles,
     visitedCells.visitedCoordinates,
     xValues,
@@ -440,6 +449,8 @@ export function useMapBoardV2Model({
     selectedEnemyNextMoveDirection,
     selectedEnemyShroomCharge,
     selectedPortal,
+    knownStairsDistance: knownStairsPath.distance,
+    knownStairsKey: knownStairsPath.stairsKey,
     activeSelectedKey,
     isSelectedPortalInActivePrompt,
     isEncounterCatalogEnabled,

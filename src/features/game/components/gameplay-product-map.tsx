@@ -533,8 +533,10 @@ function ProductMapToolbar({
 
 function ProductMapHud({
   model,
+  mapModel,
   overlayStackRef,
 }: GameplayProductMapProps & {
+  mapModel: ReturnType<typeof useMapBoardV2Model>;
   overlayStackRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
 }) {
   const player = model.gameplay.runState?.player;
@@ -565,6 +567,10 @@ function ProductMapHud({
         <div className="product-map-stat">
           <span>{rewardLabel}</span>
           <strong>{rewardValue ?? "-"}</strong>
+        </div>
+        <div className="product-map-stat">
+          <span>Stairs</span>
+          <strong>{mapModel.knownStairsDistance ?? "-"}</strong>
         </div>
       </div>
 
@@ -959,7 +965,7 @@ function ProductMapViewport({
           />
         </div>
       </div>
-      <ProductMapHud model={model} overlayStackRef={overlayStackRef} />
+      <ProductMapHud model={model} mapModel={mapModel} overlayStackRef={overlayStackRef} />
       <ProductSelectedCellCard mapModel={mapModel} />
       <ProductUpgradeSelection model={model} />
     </div>
