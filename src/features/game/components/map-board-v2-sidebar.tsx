@@ -1,4 +1,4 @@
-import { isSkullEnemySprite } from "../map-enemy-visuals";
+import { isSkullEnemySprite, resolveEnemyDisplayName } from "../map-enemy-visuals";
 import { isAttackableEnemy, isGhostEnemy } from "../game-map";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 import type { MapBoardV2Model } from "./use-map-board-v2-model";
@@ -148,12 +148,16 @@ export function MapBoardV2Sidebar({ model, portalActionTitle }: MapBoardV2Sideba
         {selectedEnemy ? (
           <>
             <div className="map2-kv">
-              <span>Sprite</span>
-              <strong>{selectedEnemy.spriteType ?? "-"}</strong>
+              <span>Name</span>
+              <strong>{resolveEnemyDisplayName(selectedEnemy)}</strong>
             </div>
             <div className="map2-kv">
               <span>Behavior</span>
               <strong>{selectedEnemy.type}</strong>
+            </div>
+            <div className="map2-kv">
+              <span>Sprite</span>
+              <strong>{selectedEnemy.spriteType ?? "-"}</strong>
             </div>
             <div className="map2-kv">
               <span>Damage</span>

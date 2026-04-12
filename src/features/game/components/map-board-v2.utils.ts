@@ -196,6 +196,12 @@ function isGhostEnemyLabels(type: string, spriteType: string | null) {
   return normalizedType.includes("ghost") || normalizedSprite.includes("ghost");
 }
 
+function normalizeEnemySpriteType(spriteType: string | null) {
+  const normalized = spriteType?.trim().toLowerCase() ?? "";
+  if (!normalized) return "";
+  return normalized.endsWith("_world") ? normalized.slice(0, -6) : normalized;
+}
+
 export function intentArrow(direction: "up" | "down" | "left" | "right") {
   if (direction === "up") return "↑";
   if (direction === "down") return "↓";
@@ -257,7 +263,10 @@ export function predictEnemyNextMoveDirection(
 }
 
 export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySnapshot) {
+  const spriteType = normalizeEnemySpriteType(enemy.spriteType);
+
   if (isEnemyAdjacentToPlayer(gameState, enemy.x, enemy.y)) {
+    if (enemy.type === "fleeing") return "adjacent strike";
     return "adjacent attack";
   }
 
@@ -270,16 +279,36 @@ export function selectedEnemyIntent(gameState: GameStateSnapshot, enemy: EnemySn
     return nextMove ? `move ${nextMove}` : "blocked / flip soon";
   }
 
+  if (enemy.type === "fleeing") {
+    return spriteType === "pengu" ? "fleeing event mob" : "fleeing boss";
+  }
+
   if (enemy.type === "stationary") {
-    return enemy.isChargingHeavy ? "charged line attack soon" : "stationary";
+    return spriteType === "shroom" ? "stationary line attacker" : "stationary";
+  }
+
+  if (enemy.type === "erratic") {
+    return "random movement";
+  }
+
+  if (enemy.type === "wobble") {
+    return "wobble out / return";
   }
 
   if (isGhostEnemyLabels(enemy.type, enemy.spriteType)) {
-    return enemy.damage !== null && enemy.damage > 0 ? "danger ghost chase" : "harmless ghost chase";
+    return enemy.damage !== null && enemy.damage > 0 ? "phase chase" : "harmless phase chase";
+  }
+
+  if (enemy.type === "chaser" && spriteType === "mimic") {
+    return "ambush chase";
   }
 
   if (enemy.hasHeavyHit) {
-    return "heavy move";
+    return "heavy chase";
+  }
+
+  if (enemy.type === "chaser") {
+    return "chase if in range";
   }
 
   return "move";

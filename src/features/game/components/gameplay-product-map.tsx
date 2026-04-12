@@ -15,6 +15,7 @@ import type { GameplayProductScreenModel } from "../runtime/use-gameplay-product
 import { getRunModeRewardValue } from "../game-modes";
 import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
+import { resolveEnemyDisplayName } from "../map-enemy-visuals";
 import {
   getUpgradeUiDescription,
   getUpgradeUiDurationText,
@@ -254,7 +255,11 @@ function ProductSelectedCellCard({
           <p className="product-map-details-title">Enemy Intel</p>
           <div className="product-map-details-grid">
             <div>
-              <span>Type</span>
+              <span>Name</span>
+              <strong>{resolveEnemyDisplayName(mapModel.selectedEnemy)}</strong>
+            </div>
+            <div>
+              <span>Behavior</span>
               <strong>{mapModel.selectedEnemy.type}</strong>
             </div>
             <div>

@@ -40,6 +40,53 @@ function normalizeEnemyValue(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? "";
 }
 
+function normalizeEnemySpriteType(spriteType: string | null) {
+  const normalized = normalizeEnemyValue(spriteType);
+  if (!normalized) return "";
+  if (normalized.endsWith("_world")) return normalized.slice(0, -6);
+  return normalized;
+}
+
+export function resolveEnemyDisplayName(enemy: Pick<EnemySnapshot, "type" | "spriteType">) {
+  const spriteType = normalizeEnemySpriteType(enemy.spriteType);
+
+  switch (spriteType) {
+    case "slime":
+      return "Slime";
+    case "redslime":
+      return "Red Slime";
+    case "bat":
+      return "Bat";
+    case "skeleton":
+      return "Skeleton";
+    case "skeleton2":
+      return "Skeleton II";
+    case "skeletonking":
+      return "Sir Jackalot";
+    case "skullbat":
+      return "Skull Bat";
+    case "mimic":
+      return "Mimic";
+    case "ghost":
+      return "Ghost";
+    case "ghost2":
+      return "Ghost II";
+    case "shroom":
+      return "Shroom";
+    case "kingslime":
+      return "King Slime";
+    case "maomi":
+      return "Lucky Nian";
+    case "pengu":
+      return "Pengu";
+    default: {
+      const type = normalizeEnemyValue(enemy.type);
+      if (!type) return "Enemy";
+      return type;
+    }
+  }
+}
+
 function resolvePatternToken(patternDirection: string | null) {
   const direction = normalizeEnemyValue(patternDirection);
   if (direction === "horizontal") return "↔";
@@ -48,9 +95,17 @@ function resolvePatternToken(patternDirection: string | null) {
 }
 
 function resolveEnemyToken(enemy: EnemySnapshot, isGhost: boolean, isJackpot: boolean) {
+  const spriteType = normalizeEnemySpriteType(enemy.spriteType);
+
   if (isJackpot) {
-    return normalizeEnemyValue(enemy.spriteType) === "skeletonking" ? "♔" : "♦";
+    return spriteType === "skeletonking" ? "♔" : "♦";
   }
+
+  if (spriteType === "mimic") return "M";
+  if (spriteType === "shroom") return "T";
+  if (spriteType === "kingslime") return "K";
+  if (spriteType === "pengu") return "P";
+  if (spriteType === "maomi") return "N";
 
   switch (normalizeEnemyValue(enemy.type)) {
     case "pattern":
@@ -125,7 +180,7 @@ export function resolveEnemyVisual(
         : isSkull
           ? "enemy-skull"
           : "enemy",
-    label: isJackpot ? "Jackpot" : isGhost ? "Ghost" : enemy.type,
+    label: isJackpot ? "Sir Jackalot" : resolveEnemyDisplayName(enemy),
     token: resolveEnemyToken(enemy, isGhost, isJackpot),
     isGhost,
     isSkull,
