@@ -733,9 +733,6 @@ export function buildKnownStairsPath(
       const nextKey = keyOf(nextX, nextY);
       if (visited.has(nextKey)) continue;
 
-      const fog = fogStateAt(gameState, nextX, nextY);
-      if (fog === "hidden") continue;
-
       const tile = tileKindAtWithLookups(gameState, nextX, nextY, lookups);
       if (tile !== "corridor") continue;
 
