@@ -144,6 +144,15 @@ function pickupCategoryPriority(category: PickupVisualCategory) {
   return 3;
 }
 
+function pickupTypePriority(type: string) {
+  const normalized = normalizePickupType(type);
+  if (normalized === "jackpot_mega") return -4;
+  if (normalized === "jackpot_major") return -3;
+  if (normalized === "jackpot_minor") return -2;
+  if (normalized === "jackpot") return -1;
+  return 0;
+}
+
 export function buildPickupStacks(pickups: MapEntitySnapshot[]): PickupStackVisual[] {
   const grouped = new Map<string, PickupStackVisual>();
 
@@ -172,6 +181,8 @@ export function buildPickupStacks(pickups: MapEntitySnapshot[]): PickupStackVisu
   }
 
   return [...grouped.values()].sort((left, right) => {
+    const typeDelta = pickupTypePriority(left.type) - pickupTypePriority(right.type);
+    if (typeDelta !== 0) return typeDelta;
     const categoryDelta = pickupCategoryPriority(left.visual.category) - pickupCategoryPriority(right.visual.category);
     if (categoryDelta !== 0) return categoryDelta;
     if (left.totalValue !== null && right.totalValue !== null && left.totalValue !== right.totalValue) {
