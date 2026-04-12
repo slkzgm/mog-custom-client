@@ -363,6 +363,16 @@ function toGameState(payload: unknown): GameStateSnapshot | null {
     nextRerollCost: pickFirstNumber(source, ["nextRerollCost", "rerollCost", "nextUpgradeRerollCost"]),
     teleportUseCount: pickFirstNumber(source, ["teleportUseCount"]),
     skDefeated: pickBooleanOrNull(source, "skDefeated"),
+    collectedJackpot: (() => {
+      const collectedJackpot = asRecord(source.collectedJackpot);
+      if (!collectedJackpot) return null;
+      const tier = pickFirstString(collectedJackpot, ["tier"]);
+      if (!tier) return null;
+      return {
+        tier,
+        payoutWei: pickFirstString(collectedJackpot, ["payoutWei"]),
+      };
+    })(),
     pendingUpgradeCount:
       pickArrayLength(source.pendingUpgradeOptions) ??
       (pendingUpgradeOptions.length > 0 ? pendingUpgradeOptions.length : 0),

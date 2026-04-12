@@ -114,6 +114,12 @@ export interface GameStateSnapshot {
   nextRerollCost: number | null;
   teleportUseCount: number | null;
   skDefeated: boolean | null;
+  collectedJackpot:
+    | {
+        tier: string;
+        payoutWei?: string | null;
+      }
+    | null;
   pendingUpgradeCount: number | null;
   pendingUpgradeOptions: string[];
   upgradesPerFloor: Record<string, string>;

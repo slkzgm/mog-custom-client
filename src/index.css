@@ -813,6 +813,10 @@ summary {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
 }
 
+.product-jackpot-modal {
+  width: min(460px, 100%);
+}
+
 .product-run-recap-upgrade-list {
   gap: 10px;
 }
@@ -1113,6 +1117,35 @@ summary {
   padding: 16px;
   display: grid;
   gap: 12px;
+}
+
+.product-jackalot-cue {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  z-index: 4;
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 14px 18px;
+  text-align: center;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(52, 35, 11, 0.94), rgba(20, 14, 7, 0.96));
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(10px);
+}
+
+.product-jackalot-cue strong {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--product-gold);
+}
+
+.product-jackalot-cue span:last-child {
+  font-size: 0.82rem;
+  color: var(--product-text);
 }
 
 .product-map-details-section {
@@ -4581,5 +4614,19 @@ summary,
 
   .product-shell-map .product-mobile-control-primary.is-primary .product-mobile-control-copy {
     color: rgba(43, 31, 0, 0.72);
+  }
+
+  .product-jackalot-cue {
+    top: 12px;
+    left: 8px;
+    right: 8px;
+    min-width: 0;
+    max-width: none;
+    transform: none;
+    padding: 10px 12px;
+  }
+
+  .product-jackpot-modal {
+    padding: 22px 18px;
   }
 }

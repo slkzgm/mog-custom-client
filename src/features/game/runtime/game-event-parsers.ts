@@ -1,4 +1,5 @@
 import type { MoveDirection } from "../game.types";
+import type { GameStateSnapshot } from "../game.types";
 
 export interface PortalPromptEvent {
   portalId: string;
@@ -23,6 +24,16 @@ export interface ShroomChargingEvent {
   shroomX: number;
   shroomY: number;
   targetTiles: ShroomTargetTile[];
+}
+
+export interface JackalotKillEvent {
+  rewardType: string;
+  rewardValue: number | null;
+}
+
+export interface JackpotPickupEvent {
+  tier: string;
+  payoutWei: string | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -109,4 +120,59 @@ export function parseShroomChargingEvents(events: Record<string, unknown>[]) {
   }
 
   return parsed;
+}
+
+export function parseLatestJackalotKillEvent(events: Record<string, unknown>[]) {
+  let enemyKilledSource: Record<string, unknown> | null = null;
+  let sawSkeletonKingDefeated = false;
+
+  for (const event of events) {
+    const source = asRecord(event);
+    if (!source) continue;
+
+    if (source.type === "enemy_killed") {
+      enemyKilledSource = source;
+      continue;
+    }
+
+    if (source.type === "skeleton_king_defeated") {
+      sawSkeletonKingDefeated = true;
+    }
+  }
+
+  if (!sawSkeletonKingDefeated || !enemyKilledSource) return null;
+
+  const lootDropped = asRecord(enemyKilledSource.lootDropped);
+  const rewardType = lootDropped ? (typeof lootDropped.type === "string" ? lootDropped.type : "unknown") : "unknown";
+  const rewardValue = lootDropped && typeof lootDropped.value === "number" ? lootDropped.value : null;
+
+  return {
+    rewardType,
+    rewardValue,
+  } satisfies JackalotKillEvent;
+}
+
+export function parseLatestJackpotPickupEvent(
+  events: Record<string, unknown>[],
+  gameState: GameStateSnapshot | null,
+) {
+  if (!gameState?.collectedJackpot?.tier) return null;
+
+  let sawJackpotPickup = false;
+  for (const event of events) {
+    const source = asRecord(event);
+    if (!source || source.type !== "pickup_collected") continue;
+
+    const pickupType = typeof source.pickupType === "string" ? source.pickupType : null;
+    if (pickupType === "jackpot_minor" || pickupType === "jackpot_major" || pickupType === "jackpot_mega") {
+      sawJackpotPickup = true;
+    }
+  }
+
+  if (!sawJackpotPickup) return null;
+
+  return {
+    tier: gameState.collectedJackpot.tier,
+    payoutWei: gameState.collectedJackpot.payoutWei ?? null,
+  } satisfies JackpotPickupEvent;
 }

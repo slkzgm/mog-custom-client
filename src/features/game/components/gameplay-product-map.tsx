@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { formatEther } from "viem";
 
 import { MapBoardV2Grid } from "./map-board-v2-grid";
 import { useMapBoardV2Model } from "./use-map-board-v2-model";
@@ -16,6 +17,7 @@ import { getRunModeRewardValue } from "../game-modes";
 import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 import { resolveEnemyDisplayName } from "../map-enemy-visuals";
+import { parseLatestJackalotKillEvent, parseLatestJackpotPickupEvent } from "../runtime/game-event-parsers";
 import {
   getActiveUpgradeUiIds,
   getUpgradeUiDescription,
@@ -27,6 +29,16 @@ import { clamp, parseCoordinateKey } from "./map-board-v2.utils";
 
 interface GameplayProductMapProps {
   model: GameplayProductScreenModel;
+}
+
+interface JackalotKillCue {
+  rewardType: string;
+  rewardValue: number | null;
+}
+
+interface JackpotPickupCue {
+  tier: string;
+  payoutWei: string | null;
 }
 
 const PRODUCT_MAP_GRID_GAP = 1;
@@ -327,6 +339,81 @@ function ProductSelectedCellCard({
         </button>
       ) : null}
     </aside>
+  );
+}
+
+function formatJackpotTierLabel(tier: string) {
+  const normalized = tier.trim().toLowerCase();
+  if (normalized === "jackpot_mega") return "Mega Jackpot";
+  if (normalized === "jackpot_major") return "Major Jackpot";
+  if (normalized === "jackpot_minor") return "Minor Jackpot";
+  if (normalized === "treasure") return "Treasure Cache";
+  if (normalized === "raffle_ticket") return "Raffle Tickets";
+  return "Jackpot";
+}
+
+function formatWeiDisplay(value: string | null) {
+  if (!value) return null;
+
+  try {
+    const formatted = formatEther(BigInt(value));
+    const [whole, decimals = ""] = formatted.split(".");
+    const trimmed = decimals.slice(0, 4).replace(/0+$/, "");
+    return trimmed ? `${whole}.${trimmed} ETH` : `${whole} ETH`;
+  } catch {
+    return null;
+  }
+}
+
+function ProductJackalotKillCue({ cue }: { cue: JackalotKillCue }) {
+  const rewardValue =
+    cue.rewardType === "treasure" || cue.rewardType === "raffle_ticket" ? cue.rewardValue : null;
+
+  return (
+    <div className="product-jackalot-cue" role="status" aria-live="polite">
+      <span className="product-card-label">Sir Jackalot Defeated</span>
+      <strong>{formatJackpotTierLabel(cue.rewardType)}</strong>
+      {typeof rewardValue === "number" ? <span>{rewardValue}</span> : null}
+    </div>
+  );
+}
+
+function ProductJackpotPickupModal({
+  cue,
+  onDismiss,
+}: {
+  cue: JackpotPickupCue;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="product-run-recap-backdrop" role="presentation" onClick={onDismiss}>
+      <section
+        className="product-run-recap-modal product-jackpot-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-jackpot-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span className="product-card-label">Jackpot Claimed</span>
+        <h2 id="product-jackpot-modal-title">{formatJackpotTierLabel(cue.tier)}</h2>
+        <p>The payout was confirmed once the pickup was collected and processed by the server.</p>
+        <div className="product-history-entry-grid">
+          <div>
+            <span>Tier</span>
+            <strong>{formatJackpotTierLabel(cue.tier)}</strong>
+          </div>
+          <div>
+            <span>Payout</span>
+            <strong>{formatWeiDisplay(cue.payoutWei) ?? "Pending"}</strong>
+          </div>
+        </div>
+        <div className="product-card-actions">
+          <button type="button" className="product-button product-button-primary" onClick={onDismiss}>
+            Continue
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -881,6 +968,12 @@ function ProductMapViewport({
 
 export function GameplayProductMap({ model }: GameplayProductMapProps) {
   const runState = model.gameplay.runState!;
+  const [jackalotKillCue, setJackalotKillCue] = useState<JackalotKillCue | null>(null);
+  const [jackpotPickupCue, setJackpotPickupCue] = useState<JackpotPickupCue | null>(null);
+  const seenCueKeysRef = useRef<{ kill: string | null; pickup: string | null }>({
+    kill: null,
+    pickup: null,
+  });
   const [viewportRef, viewportSize] = useElementSize<HTMLDivElement>();
   const [overlayStackRef, overlayStackSize] = useElementSize<HTMLDivElement>();
   const hasPendingUpgradeSelection = model.gameplay.upgrades.hasPendingUpgradeSelection;
@@ -938,6 +1031,40 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
     onSelectUpgrade: model.gameplay.upgrades.handleSelectUpgrade,
   });
 
+  useEffect(() => {
+    const killEvent = parseLatestJackalotKillEvent(model.gameplay.lastMoveEvents);
+    if (!killEvent) return;
+
+    const cueKey = `${runState.runId ?? "run"}:${runState.turnNumber ?? "?"}:kill:${killEvent.rewardType}:${killEvent.rewardValue ?? "-"}`;
+    if (seenCueKeysRef.current.kill === cueKey) return;
+
+    seenCueKeysRef.current.kill = cueKey;
+    setJackalotKillCue(killEvent);
+  }, [model.gameplay.lastMoveEvents, runState.runId, runState.turnNumber]);
+
+  useEffect(() => {
+    if (!jackalotKillCue) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setJackalotKillCue((current) => (current === jackalotKillCue ? null : current));
+    }, 2800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [jackalotKillCue]);
+
+  useEffect(() => {
+    const pickupEvent = parseLatestJackpotPickupEvent(model.gameplay.lastMoveEvents, runState);
+    if (!pickupEvent) return;
+
+    const cueKey = `${runState.runId ?? "run"}:${runState.turnNumber ?? "?"}:pickup:${pickupEvent.tier}:${pickupEvent.payoutWei ?? "-"}`;
+    if (seenCueKeysRef.current.pickup === cueKey) return;
+
+    seenCueKeysRef.current.pickup = cueKey;
+    setJackpotPickupCue(pickupEvent);
+  }, [model.gameplay.lastMoveEvents, runState]);
+
   return (
     <section className="product-map-shell">
       <div className="product-map-stage">
@@ -950,7 +1077,9 @@ export function GameplayProductMap({ model }: GameplayProductMapProps) {
           effectiveViewportSize={effectiveViewportSize}
         />
         {!model.gameplay.upgrades.hasPendingUpgradeSelection ? <ProductMobileControls model={model} /> : null}
+        {jackalotKillCue ? <ProductJackalotKillCue cue={jackalotKillCue} /> : null}
       </div>
+      {jackpotPickupCue ? <ProductJackpotPickupModal cue={jackpotPickupCue} onDismiss={() => setJackpotPickupCue(null)} /> : null}
     </section>
   );
 }
