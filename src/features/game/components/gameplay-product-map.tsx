@@ -17,11 +17,11 @@ import { useGameplayHotkeys } from "../runtime/use-gameplay-hotkeys";
 import { formatCurrentMaxValue } from "../runtime/game-runtime.utils";
 import { resolveEnemyDisplayName } from "../map-enemy-visuals";
 import {
+  getActiveUpgradeUiIds,
   getUpgradeUiDescription,
   getUpgradeUiDurationText,
   getUpgradeUiFloorsLeft,
   getUpgradeUiLabel,
-  isUpgradeUiCurrentlyActive,
 } from "../upgrade-ui-catalog";
 import { clamp, parseCoordinateKey } from "./map-board-v2.utils";
 
@@ -451,13 +451,10 @@ function ProductMapHud({
   overlayStackRef: ReturnType<typeof useElementSize<HTMLDivElement>>[0];
 }) {
   const player = model.gameplay.runState?.player;
-  const upgrades =
-    player?.upgrades.filter((upgrade) =>
-      isUpgradeUiCurrentlyActive(upgrade, {
-        gameState: model.gameplay.runState,
-        player,
-      }),
-    ) ?? [];
+  const upgrades = getActiveUpgradeUiIds(player?.upgrades, {
+    gameState: model.gameplay.runState,
+    player,
+  });
   const rewardLabel = model.gameplay.runSession.mode.rewardLabel;
   const rewardValue = getRunModeRewardValue(model.gameplay.runSession.runType, player);
 
@@ -603,13 +600,10 @@ function ProductUpgradeSelection({ model }: GameplayProductMapProps) {
     model.gameplay.upgrades.canEstimateNextRerollCost && typeof nextRerollCost === "number"
       ? `Reroll (${nextRerollCost} ${rewardLabel})`
       : "Reroll";
-  const activeUpgrades =
-    player?.upgrades.filter((upgrade) =>
-      isUpgradeUiCurrentlyActive(upgrade, {
-        gameState: model.gameplay.runState,
-        player,
-      }),
-    ) ?? [];
+  const activeUpgrades = getActiveUpgradeUiIds(player?.upgrades, {
+    gameState: model.gameplay.runState,
+    player,
+  });
 
   return (
     <section className="product-upgrade-sheet">

@@ -750,7 +750,6 @@ export function isUpgradeUiCurrentlyActive(
   if (!catalogEntry) return true;
 
   if (catalogEntry.effectKind === "instant") return false;
-  if (catalogEntry.effectKind === "passive") return true;
   if (getUpgradeUiFloorsLeft(upgradeId, params) !== null) return true;
 
   const verifiedEntry = getVerifiedUpgradeCatalogEntry(upgradeId);
@@ -769,6 +768,29 @@ export function isUpgradeUiCurrentlyActive(
   }
 
   return false;
+}
+
+export function getActiveUpgradeUiIds(
+  upgradeIds: string[] | null | undefined,
+  params: {
+    gameState?: Pick<GameStateSnapshot, "currentFloor" | "upgradesPerFloor"> | null | undefined;
+    player?: Pick<GamePlayerSnapshot, "buffsRaw"> | null | undefined;
+  },
+): string[] {
+  if (!upgradeIds || upgradeIds.length === 0) return [];
+
+  const activeUniqueIds: string[] = [];
+  const seen = new Set<string>();
+
+  for (let index = upgradeIds.length - 1; index >= 0; index -= 1) {
+    const upgradeId = upgradeIds[index];
+    if (!upgradeId || seen.has(upgradeId)) continue;
+    if (!isUpgradeUiCurrentlyActive(upgradeId, params)) continue;
+    seen.add(upgradeId);
+    activeUniqueIds.push(upgradeId);
+  }
+
+  return activeUniqueIds.reverse();
 }
 
 export function getUpgradeUiDurationLabel(upgradeId: string): string | null {
