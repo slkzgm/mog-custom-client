@@ -68,6 +68,14 @@ export function MapBoardV2Grid({
               {cell.stackBadgeText}
             </span>
           ) : null}
+          {cell.stairsTrailDistance !== null && cell.fog !== "hidden" ? (
+            <span
+              className="map2-cell-trail-badge"
+              aria-label={`${cell.stairsTrailDistance} cells from stairs`}
+            >
+              {cell.stairsTrailDistance}
+            </span>
+          ) : null}
         </button>
       ))}
     </div>

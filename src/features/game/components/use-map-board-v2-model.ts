@@ -296,6 +296,7 @@ export function useMapBoardV2Model({
         const isPlayerTile = Boolean(displayGameState.player && displayGameState.player.x === x && displayGameState.player.y === y);
         const portalAtCell = entityLookups.portalByKey.get(key) ?? null;
         const isStairsTrail = knownStairsPath.trailKeys.has(key);
+        const stairsTrailDistance = knownStairsPath.trailDistances.get(key) ?? null;
         const action = resolveCellAction({
           hint,
           isPlayerTile,
@@ -320,6 +321,7 @@ export function useMapBoardV2Model({
           stackBadgeText: occupants.length > 1 ? `+${occupants.length - 1}` : null,
           shroomDanger,
           isStairsTrail,
+          stairsTrailDistance,
           className: [
             "map2-cell",
             `map2-cell-${entity?.useWallSurface ? "wall" : tile}`,
@@ -358,6 +360,7 @@ export function useMapBoardV2Model({
     playerPortal,
     promptedPortalKey,
     knownStairsPath.trailKeys,
+    knownStairsPath.trailDistances,
     shroomDangerTiles,
     visitedCells.visitedCoordinates,
     xValues,

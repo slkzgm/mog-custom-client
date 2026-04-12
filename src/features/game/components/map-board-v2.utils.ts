@@ -684,13 +684,13 @@ export function buildKnownStairsPath(
   rememberedEntities: Map<string, RememberedEntity>,
 ) {
   const player = gameState.player;
-  if (!player) return { distance: null, trailKeys: new Set<string>(), stairsKey: null };
+  if (!player) return { distance: null, trailKeys: new Set<string>(), trailDistances: new Map<string, number>(), stairsKey: null };
 
   const stairsKey = findKnownStairsKey(gameState, rememberedEntities);
-  if (!stairsKey) return { distance: null, trailKeys: new Set<string>(), stairsKey: null };
+  if (!stairsKey) return { distance: null, trailKeys: new Set<string>(), trailDistances: new Map<string, number>(), stairsKey: null };
 
   const stairsCoordinates = parseCoordinateKey(stairsKey);
-  if (!stairsCoordinates) return { distance: null, trailKeys: new Set<string>(), stairsKey: null };
+  if (!stairsCoordinates) return { distance: null, trailKeys: new Set<string>(), trailDistances: new Map<string, number>(), stairsKey: null };
 
   const queue = [{ x: player.x, y: player.y }];
   const startKey = keyOf(player.x, player.y);
@@ -709,20 +709,25 @@ export function buildKnownStairsPath(
 
     if (current.x === stairsCoordinates.x && current.y === stairsCoordinates.y) {
       const trailKeys = new Set<string>();
+      const trailDistances = new Map<string, number>();
       let cursorKey = keyOf(current.x, current.y);
-      let distance = 0;
+      let distanceFromStairs = 0;
+      let totalDistance = 0;
 
       while (cursorKey && cursorKey !== startKey) {
         trailKeys.add(cursorKey);
-        distance += 1;
+        trailDistances.set(cursorKey, distanceFromStairs);
+        totalDistance += 1;
+        distanceFromStairs += 1;
         const previousKey = cameFrom.get(cursorKey) ?? null;
         if (!previousKey) break;
         cursorKey = previousKey;
       }
 
       return {
-        distance,
+        distance: totalDistance,
         trailKeys,
+        trailDistances,
         stairsKey,
       };
     }
@@ -757,6 +762,7 @@ export function buildKnownStairsPath(
   return {
     distance: null,
     trailKeys: new Set<string>(),
+    trailDistances: new Map<string, number>(),
     stairsKey,
   };
 }

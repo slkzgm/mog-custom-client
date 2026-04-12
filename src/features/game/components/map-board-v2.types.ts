@@ -92,4 +92,5 @@ export interface MapBoardCellViewModel {
   title: string;
   shroomDanger: ShroomTargetTile | null;
   isStairsTrail: boolean;
+  stairsTrailDistance: number | null;
 }

@@ -1038,6 +1038,28 @@ summary {
   box-shadow: 0 0 12px rgba(251, 188, 0, 0.18);
 }
 
+.map2-cell-trail-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: rgba(251, 188, 0, 0.92);
+  color: #1a1202;
+  box-shadow: 0 0 0 1px rgba(128, 68, 18, 0.45);
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
 .product-map-grid-wrap .map2-token-core,
 .product-map-grid-wrap .map2-token-badge {
   font-family: "Space Grotesk", system-ui, sans-serif;
