@@ -23,6 +23,7 @@ import type {
   TeleportRunResult,
   TrapSnapshot,
   TorchSnapshot,
+  WeeklyPoolSnapshot,
 } from "./game.types";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -471,6 +472,30 @@ export async function fetchClaims(): Promise<ClaimsSnapshot> {
     currentWeek: toClaimsWeekSnapshot(source.currentWeek),
     totalClaimable: pickFirstString(source, ["totalClaimable"]),
     claimsLocked: source.claimsLocked === true,
+  };
+}
+
+export async function fetchWeeklyPool(): Promise<WeeklyPoolSnapshot> {
+  const payload = await apiRequest<unknown>("weekly-pool", {
+    method: "GET",
+    credentials: "include",
+  });
+  const source = asRecord(payload);
+
+  if (!source) {
+    return {
+      currentPoolWei: null,
+      weekNumber: null,
+      weekEnd: null,
+      finalizationBlackout: false,
+    };
+  }
+
+  return {
+    currentPoolWei: pickFirstString(source, ["currentPoolWei"]),
+    weekNumber: pickFirstNumber(source, ["weekNumber"]),
+    weekEnd: pickFirstString(source, ["weekEnd"]),
+    finalizationBlackout: source.finalizationBlackout === true,
   };
 }
 

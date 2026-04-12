@@ -30,6 +30,13 @@ export interface ClaimsSnapshot {
   claimsLocked: boolean;
 }
 
+export interface WeeklyPoolSnapshot {
+  currentPoolWei: string | null;
+  weekNumber: number | null;
+  weekEnd: string | null;
+  finalizationBlackout: boolean;
+}
+
 export type MoveDirection = "up" | "down" | "left" | "right";
 export type RunActionType = "move" | "attack" | "break" | "pass";
 

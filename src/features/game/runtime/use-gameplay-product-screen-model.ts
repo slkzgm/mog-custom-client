@@ -5,6 +5,7 @@ import { getRunModeDefinition, runModeOrder } from "../game-modes";
 import type { RunType } from "../game.types";
 import { useClaimsQuery } from "../use-claims-query";
 import { useItemBalanceQuery } from "../use-item-balance-query";
+import { useWeeklyPoolQuery } from "../use-weekly-pool-query";
 import { useBuyKeysController } from "./use-buy-keys-controller";
 import { useLocalRunHistory } from "./run-history";
 import { useSharedGameplayModel } from "./use-shared-gameplay-model";
@@ -46,6 +47,7 @@ export function useGameplayProductScreenModel() {
   });
   const amberBalanceQuery = useItemBalanceQuery("amber", auth.isAuthenticated);
   const claimsQuery = useClaimsQuery(auth.isAuthenticated);
+  const weeklyPoolQuery = useWeeklyPoolQuery(auth.isAuthenticated);
   const {
     history: completedRunHistory,
     activeRecap: completedRunRecap,
@@ -61,12 +63,14 @@ export function useGameplayProductScreenModel() {
       worldGameplay.runSession.balanceQuery.refetch(),
       amberBalanceQuery.refetch(),
       claimsQuery.refetch(),
+      weeklyPoolQuery.refetch(),
     ]);
   }, [
     amberBalanceQuery,
     claimsQuery,
     normalGameplay.runSession.activeRunQuery,
     normalGameplay.runSession.balanceQuery,
+    weeklyPoolQuery,
     worldGameplay.runSession.activeRunQuery,
     worldGameplay.runSession.balanceQuery,
   ]);
@@ -195,6 +199,7 @@ export function useGameplayProductScreenModel() {
     auth,
     amberBalanceQuery,
     claimsQuery,
+    weeklyPoolQuery,
     buyKeys,
     gameplay,
     normalGameplay,

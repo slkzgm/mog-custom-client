@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { useGameplayProductScreenModel } from "../runtime/use-gameplay-product-screen-model";
 import { shortenAddress } from "../../auth/use-auth-controller";
 import { GameplayProductLobby } from "./gameplay-product-lobby";
@@ -9,6 +11,46 @@ function getUpgradeFloorEntries(upgradesPerFloor: Record<string, string>) {
   return Object.entries(upgradesPerFloor).sort(([leftFloor], [rightFloor]) => Number(leftFloor) - Number(rightFloor));
 }
 
+function formatCountdown(targetIso: string | null) {
+  if (!targetIso) return "-";
+
+  const target = new Date(targetIso).getTime();
+  if (!Number.isFinite(target)) return "-";
+
+  const remainingMs = target - Date.now();
+  if (remainingMs <= 0) return "0s";
+
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86_400);
+  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function useCountdownLabel(targetIso: string | null) {
+  const [countdownLabel, setCountdownLabel] = useState(() => formatCountdown(targetIso));
+
+  useEffect(() => {
+    setCountdownLabel(formatCountdown(targetIso));
+    if (!targetIso) return undefined;
+
+    const intervalId = window.setInterval(() => {
+      setCountdownLabel(formatCountdown(targetIso));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [targetIso]);
+
+  return countdownLabel;
+}
+
 function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductScreenModel> }) {
   const player = model.gameplay.runState?.player;
   const profileName = model.auth.profileQuery.data?.profileName ?? "Operator";
@@ -17,6 +59,8 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
   const amberValue = player?.amber ?? model.amberBalanceQuery.data?.balance ?? "-";
   const weeklyMarbles = model.claimsQuery.data?.currentWeek?.userMarbles ?? "-";
   const weeklyTreasure = model.claimsQuery.data?.currentWeek?.userTreasure ?? "-";
+  const weeklyCountdown = useCountdownLabel(model.weeklyPoolQuery.data?.weekEnd ?? null);
+  const isWeeklyFinalizing = model.weeklyPoolQuery.data?.finalizationBlackout === true;
 
   return (
     <header className="product-topbar">
@@ -42,6 +86,10 @@ function ProductTopBar({ model }: { model: ReturnType<typeof useGameplayProductS
           <div className="product-topbar-stat product-topbar-stat-amber">
             <span>Amber</span>
             <strong>{amberValue}</strong>
+          </div>
+          <div className="product-topbar-stat">
+            <span>Weekly Reset</span>
+            <strong>{isWeeklyFinalizing ? "Finalizing" : weeklyCountdown}</strong>
           </div>
         </div>
       </div>
