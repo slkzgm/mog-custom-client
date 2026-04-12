@@ -7,7 +7,7 @@ export interface PickupVisualDefinition {
   label: string;
   token: string;
   accent: string;
-  badgeTone: "energy" | "treasure" | "marble" | "value";
+  badgeTone: "energy" | "treasure" | "marble" | "jackpot" | "value";
 }
 
 const pickupVisualDefinitions: Record<PickupVisualCategory, PickupVisualDefinition> = {
@@ -48,12 +48,70 @@ const pickupVisualDefinitions: Record<PickupVisualCategory, PickupVisualDefiniti
   },
 };
 
+const exactPickupVisualDefinitions: Record<string, PickupVisualDefinition> = {
+  small_energy_orb: pickupVisualDefinitions.energy,
+  large_energy_orb: pickupVisualDefinitions.energy,
+  marble: pickupVisualDefinitions.marble,
+  treasure: pickupVisualDefinitions.treasure,
+  amber: pickupVisualDefinitions.amber,
+  jackpot: {
+    category: "treasure",
+    label: "Jackpot",
+    token: "JP",
+    accent: "pickup-treasure",
+    badgeTone: "jackpot",
+  },
+  jackpot_minor: {
+    category: "treasure",
+    label: "Minor jackpot",
+    token: "JP",
+    accent: "pickup-treasure",
+    badgeTone: "jackpot",
+  },
+  jackpot_major: {
+    category: "treasure",
+    label: "Major jackpot",
+    token: "JP",
+    accent: "pickup-treasure",
+    badgeTone: "jackpot",
+  },
+  jackpot_mega: {
+    category: "treasure",
+    label: "Mega jackpot",
+    token: "JP",
+    accent: "pickup-treasure",
+    badgeTone: "jackpot",
+  },
+  raffle_ticket: {
+    category: "treasure",
+    label: "Raffle ticket",
+    token: "RT",
+    accent: "pickup-treasure",
+    badgeTone: "treasure",
+  },
+  hongbao: {
+    category: "generic",
+    label: "HongBao",
+    token: "HB",
+    accent: "pickup-generic",
+    badgeTone: "value",
+  },
+  abs: {
+    category: "generic",
+    label: "ABS drop",
+    token: "ABS",
+    accent: "pickup-generic",
+    badgeTone: "value",
+  },
+};
+
 function normalizePickupType(value: string) {
   return value.trim().toLowerCase();
 }
 
 export function resolvePickupVisualCategory(type: string): PickupVisualCategory {
   const normalized = normalizePickupType(type);
+  if (normalized in exactPickupVisualDefinitions) return exactPickupVisualDefinitions[normalized].category;
   if (normalized.includes("energy")) return "energy";
   if (normalized.includes("amber")) return "amber";
   if (normalized.includes("treasure")) return "treasure";
@@ -63,7 +121,8 @@ export function resolvePickupVisualCategory(type: string): PickupVisualCategory 
 
 export function resolvePickupVisual(typeOrEntity: string | MapEntitySnapshot): PickupVisualDefinition {
   const type = typeof typeOrEntity === "string" ? typeOrEntity : typeOrEntity.type;
-  return pickupVisualDefinitions[resolvePickupVisualCategory(type)];
+  const normalized = normalizePickupType(type);
+  return exactPickupVisualDefinitions[normalized] ?? pickupVisualDefinitions[resolvePickupVisualCategory(type)];
 }
 
 export function pickupValueText(value: number | null): string | null {

@@ -139,8 +139,23 @@ function shortTypeCode(type: string | null): string {
 function pickupBadge(entity: MapEntitySnapshot): string {
   const visual = resolvePickupVisual(entity);
   const value = entity.value;
+  const normalizedType = entity.type.trim().toLowerCase();
   const prefix =
-    visual.category === "energy" ? "e" : visual.category === "treasure" ? "t" : visual.category === "marble" ? "m" : shortTypeCode(entity.type);
+    normalizedType === "jackpot" || normalizedType === "jackpot_minor" || normalizedType === "jackpot_major" || normalizedType === "jackpot_mega"
+      ? "jp"
+      : normalizedType === "raffle_ticket"
+        ? "rt"
+        : normalizedType === "hongbao"
+          ? "hb"
+          : normalizedType === "abs"
+            ? "abs"
+            : visual.category === "energy"
+              ? "e"
+              : visual.category === "treasure"
+                ? "t"
+                : visual.category === "marble"
+                  ? "m"
+                  : shortTypeCode(entity.type);
   return value !== null ? `${prefix}+${value}` : prefix;
 }
 
